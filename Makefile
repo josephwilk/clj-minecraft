@@ -3,6 +3,8 @@ export _JAVA_OPTIONS="-Xmx1g"
 install:
 	@echo "Downloading Spigot Minecraft server..."
 	mkdir -p minecraft
+	mkdir -p minecraft/plugins
+	
 	cd minecraft && wget --no-clobber https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar
 
 	@echo "Building Spigot Minecraft server..."
