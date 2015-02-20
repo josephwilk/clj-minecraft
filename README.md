@@ -16,7 +16,9 @@ cljminecraft has two specific goals:
 
 ## Install
 
-```make```
+```
+make
+```
 
 ## Usage
 
