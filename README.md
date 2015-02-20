@@ -13,6 +13,11 @@ cljminecraft has two specific goals:
 > in clj-minecraft. I'm keeping the structure fairly flat and concise so
 > that one can write idiomatic code for 80% of the plugin code.
 
+
+## Install
+
+```make```
+
 ## Usage
 
 ### Install the mod
