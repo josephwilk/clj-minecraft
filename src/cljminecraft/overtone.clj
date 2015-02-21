@@ -22,9 +22,11 @@
 (defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
 (defn monster [type] (bk/ui-sync @cljminecraft.core/clj-plugin #(e/spawn-entity (:origin ctx) type)))
 
+(defn bump-y [y-offset] (.setY (:origin ctx) (+ y-offset (.getY (:origin ctx)))))
+(defn bump-x [x-offset] (.setX (:origin ctx) (+ x-offset (.getX (:origin ctx)))))
+(defn bump-z [z-offset] (.setZ (:origin ctx) (+ z-offset (.getZ (:origin ctx)))))
 
-(.setY  (:origin ctx) 70)
-(.setY (:origin ctx) (+ 2.0 (.getY (:origin ctx))))
+;;(.setY (:origin ctx) 70)
 
 (ctl-global-clock 8.0)
 
