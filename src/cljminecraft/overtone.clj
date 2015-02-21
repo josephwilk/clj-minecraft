@@ -1,7 +1,11 @@
 (ns cljminecraft.overtone
+  "Music and Minecraft."
   (:use [mud.core] [mud.timing] [overtone.core])
   (:require [cljminecraft.bukkit :as bk]
-            [cljminecraft.blocks :as b]))
+            [cljminecraft.blocks :as b]
+            [cljminecraft.world :as w]))
+
+(connect-external-server)
 
 (do
   (def dirty-kick (freesound 30669))
@@ -17,18 +21,34 @@
 (ctl-global-clock 8.0)
 
 (def growth (atom 0))
+(def material-bag (cycle [:stone :grass :wood]))
 
-(def t2 (on-beat-trigger 16
-                         (fn []
-                           (subby)
-                           (swap! growth inc)
-                           (draw :water [(b/pen-up) (b/up 5) (b/forward @growth) (b/pen-down) (b/left 1) (b/forward 1)]))))
+(def sub-trigger
+  (on-beat-trigger
+   16
+   (fn []
+     (subby)
+     (swap! growth inc)
+     (draw (nth material-bag @growth) [(b/pen-up) (b/forward 1) (b/left @growth) (b/pen-down) (b/forward @growth)]))))
+
+(remove-beat-trigger sub-trigger)
+
+(def ring-trigger (on-beat-trigger
+        32
+        (fn []
+          (ring-hat)
+          (draw :sand [(b/up 10) (b/left 1) (b/forward 10)]))))
+
+(remove-beat-trigger ring-trigger)
+
+(def sub2-trigger
+  (on-beat-trigger
+   44
+   (fn []
+     (subby)
+     (draw :grass [(b/up 10) (b/left 1) (b/left 1)]))))
 
 
-(def t (on-beat-trigger 32 (fn []
-                             (ring-hat)
-                             (draw :sand [(b/up 10) (b/left 1) (b/forward 10)]))))
-
-(remove-beat-trigger t2)
+(remove-beat-trigger sub2-trigger)
 (remove-all-beat-triggers)
 (stop)
