@@ -4,7 +4,8 @@
   (:require [cljminecraft.bukkit :as bk]
             [cljminecraft.blocks :as b]
             [cljminecraft.world :as w]
-            [cljminecraft.entity :as e]))
+            [cljminecraft.entity :as e]
+            [cljminecraft.items :as i]))
 
 ;;(connect-external-server)
 
@@ -17,6 +18,24 @@
   (def click (freesound 406))
   (def wop (freesound 85291))
   (def subby (freesound 25649)))
+
+(defn block "relative to player" [x y z material]
+  (let [l (.getLocation (first (.getOnlinePlayers (bk/server))))
+        m (i/get-material material)]
+    (doto l
+      (.setX (+ x (.getX l)))
+      (.setY (+ y (.getY l)))
+      (.setZ (+ z (.getZ l))))
+    (bk/ui-sync
+     @cljminecraft.core/clj-plugin
+     (fn []
+       (doto (.getBlock l)
+         (.setData 0)
+         (.setType (.getItemType m))
+         (.setData (.getData m)))))))
+
+(comment
+  (block -5 5 0 :dirt))
 
 (def ctx (b/setup-context (first (.getOnlinePlayers (bk/server)))))
 (defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
