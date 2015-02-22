@@ -1,10 +1,12 @@
 export _JAVA_OPTIONS="-Xmx1g"
 
+PLUGIN_JAR="minecraft/plugins/cljminecraft-1.0.6-SNAPSHOT-standalone.jar"
+
 install:
 	@echo "Downloading Spigot Minecraft server..."
 	mkdir -p minecraft
 	mkdir -p minecraft/plugins
-	
+
 	cd minecraft && wget --no-clobber https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar
 
 	@echo "Building Spigot Minecraft server..."
@@ -15,4 +17,11 @@ install:
 	lein uberjar
 	cp target/cljminecraft-1.0.6-SNAPSHOT-standalone.jar minecraft/plugins/
 
-	@echo "Minecraft is ready!" 
+	@echo "Minecraft is ready!"
+
+install-plugin: $(PLUGIN_JAR)
+
+$(PLUGIN_JAR):
+	@echo "Compling clj-minecraft..."
+	lein uberjar
+	cp target/cljminecraft-1.0.6-SNAPSHOT-standalone.jar minecraft/plugins/
