@@ -25,3 +25,8 @@ $(PLUGIN_JAR):
 	@echo "Compling clj-minecraft..."
 	lein uberjar
 	cp target/cljminecraft-1.0.6-SNAPSHOT-standalone.jar minecraft/plugins/
+
+reset-world:
+	cd minecraft && rm -rf world/*
+	cd minecraft && rm -rf world_nether/*
+	cd minecraft && rm -rf world_the_end/*
