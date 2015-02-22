@@ -1,6 +1,7 @@
 (ns cljminecraft.overtone
   "Music and Minecraft."
-  (:use [mud.core] [mud.timing] [overtone.core])
+  (:import [org.bukkit Location])
+  (:use [overtone.core] [mud.core] [mud.timing])
   (:require [cljminecraft.bukkit :as bk]
             [cljminecraft.blocks :as b]
             [cljminecraft.world :as w]
@@ -13,8 +14,31 @@
 
 (def player (first (.getOnlinePlayers (bk/server))))
 
-(defn block "relative to player" [x y z material]
-  (let [l (.getLocation player)
+(defn blocks "relative to player" [actions material]
+  (let [m (i/get-material material)]
+    (bk/ui-sync
+     @cljminecraft.core/clj-plugin
+     (fn []
+       (doseq [[x y z] actions]
+         (let [l (.getLocation player)]
+           (doto l
+             (.setX (+ x (.getX l)))
+             (.setY (+ y (.getY l)))
+             (.setZ (+ z (.getZ l))))
+           (doto (.getBlock l)
+             (.setData 0)
+             (.setType (.getItemType m))
+             (.setData (.getData m)))))))))
+
+(def start-player-loc  (.getLocation player))
+
+(defn block "relative to player" [x y z material & [fixed]]
+  (let [l (if fixed
+            (Location. (first (bk/worlds))
+                       (.getX start-player-loc)
+                       (.getY start-player-loc)
+                       (.getZ start-player-loc))
+            (.getLocation player))
         m (i/get-material material)]
     (doto l
       (.setX (+ x (.getX l)))
@@ -28,18 +52,55 @@
          (.setType (.getItemType m))
          (.setData (.getData m)))))))
 
+(def stairs (atom {:x -1 :y -1}))
+
+(defn add-step [thing]
+  (when (< -22 (:x @stairs))
+    (do
+      (block (:x @stairs) (:y @stairs) 0 thing true)
+      (swap! stairs assoc :x (dec (:x @stairs)))
+      (swap! stairs assoc :y (min 5 (inc (:y @stairs)))))))
+
+(block -7 -2 0 :air)
+(add-step (nth (cycle [:glass :brick :grass]) (* -1 (:x @stairs))))
+
 (comment
   (loop [x -1
          y -1]
-    (block x y 0 :brick)
+    (block x y 0 :air)
     (when (> x -10)
-      (recur (dec x) (inc y)))))
+      (recur (dec x) (inc y))))
+  )
 
-(block 9 10 0 :air)
+(defn set-time [t]
+  (if-not (integer? t)
+    (case t
+      :sunset (.setTime (first (bk/worlds)) 12400)
+      :night (.setTime (first (bk/worlds)) 21900)
+      :day  (.setTime (first (bk/worlds)) 0))
+    (.setTime (first (bk/worlds)) t)))
+
+(set-time :day)
+
+(blocks [[-5 -1 0]
+         [-5 -1 1]
+         [-6 -1 1]
+         [-6 -1 0]] :air)
 
 (def ctx (b/setup-context (first (.getOnlinePlayers (bk/server)))))
 (defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
-(defn monster [type] (bk/ui-sync @cljminecraft.core/clj-plugin #(e/spawn-entity (:origin ctx) type)))
+(defn monster [x y z type]
+  (let [start-player-loc (.getLocation player)
+        l (Location. (first (bk/worlds))
+                     (.getX start-player-loc)
+                     (.getY start-player-loc)
+                     (.getZ start-player-loc))
+
+        _ (.setX l (+ x (.getX l)))
+        _ (.setY l (+ y (.getX l)))
+        _ (.setZ l (+ z (.getX l)))]
+    (bk/ui-sync @cljminecraft.core/clj-plugin #(e/spawn-entity
+                                                l type))))
 
 (defn bump-y [y-offset] (.setY (:origin ctx) (+ y-offset (.getY (:origin ctx)))))
 (defn bump-x [x-offset] (.setX (:origin ctx) (+ x-offset (.getX (:origin ctx)))))
@@ -67,6 +128,18 @@
                    ])
 
 (reset! cell-size 20)
+
+(defonce boom-s      (freesound-sample 33637))
+
+(def trigger-g77218
+  (on-beat-trigger 8 #(do
+                        (add-step (nth (cycle [:glass :brick :grass]) (* -1 (:x @stairs))) )
+                        (boom-s)
+
+                       )))
+
+(remove-beat-trigger trigger-g77218)
+(remove-all-beat-triggers)
 
 (def sub-trigger
   (on-beat-trigger
@@ -103,11 +176,16 @@
 
 (def sub2-trigger
   (on-beat-trigger
-   (* 4)
+   (* 8)
    (fn []
      (highhat :rate 1.0)
-     (monster :pig)
+     (monster -2 1 0 :pig)
+     (block -5 7 0 :sand)
+     (blocks [[-5 5 0]
+              [-5 4 0]
+              [-5 2 0]] :air)
      (draw :air [(b/up 10) (b/left 1) (b/forward 10) (b/left 1)]))))
+     (block -5 7 0 :air)
 
 (remove-beat-trigger sub2-trigger)
 (remove-all-beat-triggers)
