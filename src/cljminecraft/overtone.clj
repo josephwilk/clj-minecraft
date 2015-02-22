@@ -18,9 +18,10 @@
   (def click (freesound 406))
   (def wop (freesound 85291))
   (def subby (freesound 25649)))
+(def player (first (.getOnlinePlayers (bk/server))))
 
 (defn block "relative to player" [x y z material]
-  (let [l (.getLocation (first (.getOnlinePlayers (bk/server))))
+  (let [l (.getLocation player)
         m (i/get-material material)]
     (doto l
       (.setX (+ x (.getX l)))
