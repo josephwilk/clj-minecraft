@@ -93,13 +93,15 @@
 (defn circle
   ([size thing] (circle size -1 thing))
   ([size y thing]
-      (blocks [[1 y -1] [1 y 0] [1 y 1]
-               [0 y 1] [-1 y 1]
-               [-1 y 0] [-1 y -1]
-               [0 y -1]] thing)))
+     (let [top    (map (fn [s] [1 y s]) (range (- 1 (/ size 2))  (dec size)))]
+       (blocks (concat top
+                       ;;             [1 y -1] [1 y 0] [1 y 1]
+                       [[0 y 1] [-1 y 1]
+                         [-1 y 0] [-1 y -1]
+                         [0 y -1]]) thing))))
 
 (block -1 -1 1 :dirt)
-(circle 1 -1 :water)
+(circle 5 -1 :stone)
 (circle 1 -1 :air)
 
 (block 0 -1 0 :stone)
@@ -145,11 +147,11 @@
                    (b/pen-down)
                    (b/back 2)
 
-;;                   (b/left (rand-int 10))
-;;                   (b/right (rand-int 10))
-;;                   (b/up (rand-int 10))
-;;                   (b/right (rand-int 10))
-;;                   (b/down (rand-int 10))
+                   (b/left (rand-int 10))
+                   (b/right (rand-int 10))
+                   (b/up (rand-int 10))
+                   (b/right (rand-int 10))
+                   (b/down (rand-int 10))
                    ])
 
 (reset! cell-size 20)
