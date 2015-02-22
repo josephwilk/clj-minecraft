@@ -11,13 +11,6 @@
 
 (bk/broadcast "Overtone, Clojure and Minecraft")
 
-(do
-  (def dirty-kick (freesound 30669))
-  (def ring-hat (freesound 12912))
-  (def snare (freesound 26903))
-  (def click (freesound 406))
-  (def wop (freesound 85291))
-  (def subby (freesound 25649)))
 (def player (first (.getOnlinePlayers (bk/server))))
 
 (defn block "relative to player" [x y z material]
@@ -119,3 +112,11 @@
 (remove-beat-trigger sub2-trigger)
 (remove-all-beat-triggers)
 (stop)
+
+(do
+  (def dirty-kick (freesound 30669))
+  (def ring-hat (freesound 12912))
+  (def snare (freesound 26903))
+  (def click (freesound 406))
+  (def wop (freesound 85291))
+  (def subby (freesound 25649)))
