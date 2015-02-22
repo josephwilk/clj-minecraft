@@ -13,6 +13,26 @@
 (bk/broadcast "Overtone, Clojure and Minecraft")
 
 (def player (first (.getOnlinePlayers (bk/server))))
+(def active-world (last (bk/worlds)))
+(def start-player-loc  (.getLocation player))
+(def ctx (b/setup-context player))
+
+(defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
+(defn monster [x y z type]
+  (let [start-player-loc (.getLocation player)
+        l (Location. active-world
+                     (.getX start-player-loc)
+                     (.getY start-player-loc)
+                     (.getZ start-player-loc))
+
+        _ (.setX l (+ x (.getX l)))
+        _ (.setY l (+ y (.getX l)))
+        _ (.setZ l (+ z (.getX l)))]
+    (bk/ui-sync @cljminecraft.core/clj-plugin #(e/spawn-entity l type))))
+
+(defn bump-y [y-offset] (.setY (:origin ctx) (+ y-offset (.getY (:origin ctx)))))
+(defn bump-x [x-offset] (.setX (:origin ctx) (+ x-offset (.getX (:origin ctx)))))
+(defn bump-z [z-offset] (.setZ (:origin ctx) (+ z-offset (.getZ (:origin ctx)))))
 
 (defn blocks "relative to player" [actions material]
   (let [m (i/get-material material)]
@@ -30,11 +50,9 @@
              (.setType (.getItemType m))
              (.setData (.getData m)))))))))
 
-(def start-player-loc  (.getLocation player))
-
 (defn block "relative to player" [x y z material & [fixed]]
   (let [l (if fixed
-            (Location. (first (bk/worlds))
+            (Location. active-world
                        (.getX start-player-loc)
                        (.getY start-player-loc)
                        (.getZ start-player-loc))
@@ -52,17 +70,37 @@
          (.setType (.getItemType m))
          (.setData (.getData m)))))))
 
-(def stairs (atom {:x -1 :y -1}))
+(def stairs (atom {:x -1 :y -1 :z 2}))
 
 (defn add-step [thing]
-  (when (< -22 (:x @stairs))
-    (do
-      (block (:x @stairs) (:y @stairs) 0 thing true)
-      (swap! stairs assoc :x (dec (:x @stairs)))
-      (swap! stairs assoc :y (min 5 (inc (:y @stairs)))))))
+  (do
+    (block (:x @stairs) (:y @stairs) (:z   @stairs) thing true)
+    (swap! stairs assoc :x (dec (:x @stairs)))
+    ;;(swap! stairs assoc :y (min 5 (inc (:y @stairs))))
+    ))
 
-(block -7 -2 0 :air)
-(add-step (nth (cycle [:glass :brick :grass]) (* -1 (:x @stairs))))
+(defn letters []
+  (blocks [
+           [-5 2 0] [-5 2 1] [-5 2 2] [-5 1 2] [-5 0 2] [-5 0 1] [-5 0 0] [-5 1 0]
+           [-5 2 -2] [-5 1 -2] [-5 0 -3] [-5 2 -4] [-5 1 -4]
+           [-5 0 -6] [-5 1 -6] [-5 2 -6] [-5 0 -7] [-5 0 -8]  [-5 2 -7] [-5 2 -8]
+           ] :dirt))
+
+(defn circle
+  ([size thing] (circle size -1 thing))
+  ([size y thing]
+      (blocks [[1 y -1] [1 y 0] [1 y 1]
+               [0 y 1] [-1 y 1]
+               [-1 y 0] [-1 y -1]
+               [0 y -1]] thing)))
+
+(block -1 -1 1 :dirt)
+(circle 1 -1 :water)
+(circle 1 -1 :air)
+
+(block 0 -1 0 :stone)
+
+(doseq [i (range 100)] (add-step :water))
 
 (comment
   (loop [x -1
@@ -87,24 +125,7 @@
          [-6 -1 1]
          [-6 -1 0]] :air)
 
-(def ctx (b/setup-context (first (.getOnlinePlayers (bk/server)))))
-(defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
-(defn monster [x y z type]
-  (let [start-player-loc (.getLocation player)
-        l (Location. (first (bk/worlds))
-                     (.getX start-player-loc)
-                     (.getY start-player-loc)
-                     (.getZ start-player-loc))
 
-        _ (.setX l (+ x (.getX l)))
-        _ (.setY l (+ y (.getX l)))
-        _ (.setZ l (+ z (.getX l)))]
-    (bk/ui-sync @cljminecraft.core/clj-plugin #(e/spawn-entity
-                                                l type))))
-
-(defn bump-y [y-offset] (.setY (:origin ctx) (+ y-offset (.getY (:origin ctx)))))
-(defn bump-x [x-offset] (.setX (:origin ctx) (+ x-offset (.getX (:origin ctx)))))
-(defn bump-z [z-offset] (.setZ (:origin ctx) (+ z-offset (.getZ (:origin ctx)))))
 
 ;;(.setY (:origin ctx) 70)
 
@@ -112,7 +133,7 @@
 
 (def cell-size (atom 1))
 (def growth (atom 0))
-(def material-bag (cycle [:sand :stone :grass :wood :dirt :wool :pumpkin :skull :stationary_water  :water :cobblestone :lava ]))
+(def material-bag (cycle [:sand :stone :grass :wood :dirt :wool :pumpkin :skull :stationary_water :water :cobblestone :lava ]))
 (def instructions [(b/pen-up)
                    (b/up 2)
                    (b/forward 1)
