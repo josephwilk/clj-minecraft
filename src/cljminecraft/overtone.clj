@@ -117,9 +117,9 @@
 (defn set-time [t]
   (if-not (integer? t)
     (case t
-      :sunset (.setTime (first (bk/worlds)) 12400)
-      :night (.setTime (first (bk/worlds)) 21900)
-      :day  (.setTime (first (bk/worlds)) 0))
+      :sunset (.setTime active-world 12400)
+      :night (.setTime  active-world 21900)
+      :day  (.setTime  active-world 0))
     (.setTime (first (bk/worlds)) t)))
 
 (set-time :day)
