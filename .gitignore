@@ -14,3 +14,4 @@ test
 *.sh
 /deploy
 /.settings/ccw.repl.cmdhistory.prefs
+minecraft/*
