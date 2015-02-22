@@ -36,7 +36,13 @@
          (.setData (.getData m)))))))
 
 (comment
-  (block -5 5 0 :dirt))
+  (loop [x -1
+         y -1]
+    (block x y 0 :brick)
+    (when (> x -10)
+      (recur (dec x) (inc y)))))
+
+(block 9 10 0 :air)
 
 (def ctx (b/setup-context (first (.getOnlinePlayers (bk/server)))))
 (defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
