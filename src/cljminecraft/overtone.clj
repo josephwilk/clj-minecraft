@@ -34,6 +34,16 @@
 (defn bump-x [x-offset] (.setX (:origin ctx) (+ x-offset (.getX (:origin ctx)))))
 (defn bump-z [z-offset] (.setZ (:origin ctx) (+ z-offset (.getZ (:origin ctx)))))
 
+(defn teleport [x y z]
+  (let [l (.getLocation player) ]
+    (doto l
+      (.setX (+ x (.getX l)))
+      (.setY (+ y (.getY l)))
+      (.setZ (+ z (.getZ l))))
+    (.teleport player l)))
+
+(teleport 0 100 0)
+
 (defn blocks "relative to player"
   ([actions material] (blocks (map #(if (= 3 (count %1)) (concat %1 [material])) actions)) )
   ([actions]
