@@ -34,21 +34,23 @@
 (defn bump-x [x-offset] (.setX (:origin ctx) (+ x-offset (.getX (:origin ctx)))))
 (defn bump-z [z-offset] (.setZ (:origin ctx) (+ z-offset (.getZ (:origin ctx)))))
 
-(defn blocks "relative to player" [actions material]
-  (let [m (i/get-material material)]
-    (bk/ui-sync
-     @cljminecraft.core/clj-plugin
-     (fn []
-       (doseq [[x y z] actions]
-         (let [l (.getLocation player)]
-           (doto l
-             (.setX (+ x (.getX l)))
-             (.setY (+ y (.getY l)))
-             (.setZ (+ z (.getZ l))))
-           (doto (.getBlock l)
-             (.setData 0)
-             (.setType (.getItemType m))
-             (.setData (.getData m)))))))))
+(defn blocks "relative to player"
+  ([actions material] (blocks (map #(if (= 3 (count %1)) (concat %1 [material])) actions)) )
+  ([actions]
+     (bk/ui-sync
+      @cljminecraft.core/clj-plugin
+      (fn []
+        (doseq [[x y z m] actions]
+          (let [m (i/get-material m)
+                l (.getLocation player)]
+            (doto l
+              (.setX (+ x (.getX l)))
+              (.setY (+ y (.getY l)))
+              (.setZ (+ z (.getZ l))))
+            (doto (.getBlock l)
+              (.setData 0)
+              (.setType (.getItemType m))
+              (.setData (.getData m)))))))))
 
 (defn block "relative to player" [x y z material & [fixed]]
   (let [l (if fixed
@@ -90,19 +92,45 @@
            [-5 1 -4]
            [-5 0 -4]] :dirt))
 
+(defn pattern->cords [pattern material]
+  (map
+   (fn [[x line]]
+     (map
+      (fn [[y cell]]
+        (case cell
+          1 [x y material]
+          0 [x y :air]))
+      (map vector (range) line)))
+   (map vector (range) pattern)))
+
 (defn circle
   ([size thing] (circle size -1 thing))
   ([size y thing]
-     (let [top    (map (fn [s] [1 y s]) (range (- 1 (/ size 2))  (dec size)))]
-       (blocks (concat top
-                       ;;             [1 y -1] [1 y 0] [1 y 1]
-                       [[0 y 1] [-1 y 1]
-                         [-1 y 0] [-1 y -1]
-                         [0 y -1]]) thing))))
+     (let [top    (map (fn [s] [1  y  s]) (range (- 1 (int (/ size 2))) (dec size)))
+           bottom (map (fn [s] [-1 y  s]) (range (- 1 (int (/ size 2))) (dec size)))
+           left   (map (fn [s] [s  y  1]) (range (- 1 (int (/ size 2))) (dec size)))
+           right  (map (fn [s] [s  y -1]) (range (- 1 (int (/ size 2))) (dec size)))
+           cords (distinct (apply concat top bottom left right))]
+       (blocks cords thing))))
+
+(defn diamond
+  [material]
+  (pattern->cords [[0 1 0]
+                   [1 0 1]
+                   [0 1 0]] material))
+
+(defn corners [material]
+  (pattern->cords [[1 0 1]
+                   [0 0 0]
+                   [1 0 1]] material))
 
 (block -1 -1 1 :dirt)
 (circle 5 -1 :stone)
 (circle 1 -1 :air)
+
+(circle 3 :dirt)
+(diamond :dirt)
+(corners :dirt)
 
 (block 0 -1 0 :stone)
 
