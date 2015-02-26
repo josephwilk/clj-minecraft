@@ -105,22 +105,9 @@
 (def stairs (atom {:x -1 :y -1 :z 2}))
 
 (defn add-step [thing]
-  (do
-    (block (:x @stairs) (:y @stairs) (:z   @stairs) thing true)
-    (swap! stairs assoc :x (dec (:x @stairs)))
-    (swap! stairs assoc :y (min 5 (inc (:y @stairs))))
-    ))
-
-(defn letters [m]
-  (blocks [[-5 2 0] [-5 2 1] [-5 2 2]
-           [-5 1 2] [-5 0 2] [-5 -1 2]
-           [-5 -1 1] [-5 -1 0]
-           [-5 -1 0] [-5 0 0] [-5 1 0]
-
-           [-5 2 -2] [-5 1 -2] [-5 0 -2]
-           [-5 -1 -3] [-5 2 -4]
-           [-5 1 -4]
-           [-5 0 -4]] m))
+  (block (:x @stairs) (:y @stairs) (:z   @stairs) thing true)
+  (swap! stairs assoc :x (dec (:x @stairs)))
+  (swap! stairs assoc :y (min 5 (inc (:y @stairs)))))
 
 (defn pattern->cords [pattern y material]
   (mapcat
@@ -133,19 +120,98 @@
       (map vector (range (- 0 (int (/ (count line) 2))) (- (count line) (int (/ (count line) 2)))) line)))
    (map vector (range (- 0 (int (/ (count (first pattern)) 2))) (count (first pattern))) pattern)))
 
+(def letter-patterns
+  {:C [[1 1 1 1 1]
+       [1 0 0 0 0]
+       [1 0 0 0 0]
+       [1 0 0 0 0]
+       [1 1 1 1 1]]
+
+   :L [[1 0 0 0 0]
+       [1 0 0 0 0]
+       [1 0 0 0 0]
+       [1 0 0 0 0]
+       [1 1 1 1 1]]
+
+   :J [[1 1 1 1 1]
+       [0 0 1 0 0]
+       [0 0 1 0 0]
+       [0 0 1 0 0]
+       [1 1 1 0 0]]
+
+   :U [[1 0 0 0 1]
+       [1 0 0 0 1]
+       [1 0 0 0 1]
+       [1 0 0 0 1]
+       [1 1 1 1 1]]
+
+   :O [[1 1 1 1 1]
+       [1 0 0 0 1]
+       [1 0 0 0 1]
+       [1 0 0 0 1]
+       [1 1 1 1 1]]
+
+   :E [[1 1 1 1 1]
+       [1 0 0 0 0]
+       [1 1 1 1 0]
+       [1 0 0 0 0]
+       [1 1 1 1 1]]
+
+   :V [[1 0 0 0 1]
+       [1 0 0 0 1]
+       [1 0 0 0 1]
+       [0 1 0 1 0]
+       [0 0 1 0 0]]
+
+   :R [[1 1 1 1 1]
+       [1 0 0 0 1]
+       [1 1 1 1 1]
+       [1 0 0 1 0]
+       [1 0 0 0 1]]
+
+   :T [[1 1 1 1 1]
+       [0 0 1 0 0]
+       [0 0 1 0 0]
+       [0 0 1 0 0]
+       [0 0 1 0 0]]
+
+   :N [[1 0 0 0 1]
+       [1 1 0 0 1]
+       [1 0 1 0 1]
+       [1 0 0 1 1]
+       [1 0 0 0 1]]
+
+   :I [[1 1 1 1 1]
+       [0 0 1 0 0]
+       [0 0 1 0 0]
+       [0 0 1 0 0]
+       [1 1 1 1 1]]
+
+   :M [[1 0 0 0 1]
+       [1 1 0 1 1]
+       [1 0 1 0 1]
+       [1 0 0 0 1]
+       [1 0 0 0 1]]})
+
+(defn letter [char y material]
+  (blocks (pattern->cords (get letter-patterns char) y material)))
+
+(defn word [word y material]
+  (doseq [l (map keyword (drop 1 (clojure.string/split word #"")))]
+    (letter l y material)))
+
 (defn circle
   ([size thing] (circle size -1 thing))
   ([size y thing]
      (let [mid (int (/ size 2))
            neg-mid (- 0 mid)
-           top    (map (fn [s] [mid  y  s]) (range neg-mid (- size mid)))
+           top    (map (fn [s] [mid  y  s])    (range neg-mid (- size mid)))
            bottom (map (fn [s] [neg-mid y  s]) (range neg-mid (- size mid)))
-           left   (map (fn [s] [s  y  mid]) (range neg-mid (- size mid)))
+           left   (map (fn [s] [s  y  mid])    (range neg-mid (- size mid)))
            right  (map (fn [s] [s  y neg-mid]) (range neg-mid (- size mid)))
            cords (distinct (apply concat top bottom left right []))]
        (blocks cords thing)
-       cords
-       )))
+       cords)))
 
 (defn diamond
   [material]
@@ -158,54 +224,56 @@
                            [0 0 0]
                            [1 0 1]] 3 material)))
 
-(def spirial-x (atom 0))
-(def spirial-y (atom 3))
-(def spirial-z (atom 0))
-(def spirial-size (atom 10))
-(def dir (atom :forward))
-(def spirial-material (atom :sand))
 
-(reset! spirial-material :water)
+(def spirial-state {:x (atom 0)
+                    :y (atom 3)
+                    :z (atom 0)
+                    :size (atom 10)
+                    :dir (atom :forward)
+                    :material :sand})
 
-(defn reset-spirial []
-  (reset! spirial-x 0)
-  (reset! spirial-z 0)
-  (reset! spirial-y 3)
-  (reset! spirial-size 10)
-  (reset! dir :forward))
+(reset! (:material spirial-state) :water)
+
+(defn reset-spirial! []
+  (reset! (:x spirial-state) 0)
+  (reset! (:z spirial-state) 0)
+  (reset! (:y spirial-state) 3)
+  (reset! (:size spirial-state) 10)
+  (reset! (:dir spirial-state) :forward))
 
 (defn spirial
-  ([material] (spirial material #(swap! spirial-size inc)))
+  ([material] (spirial material #(swap! (:size spirial-state) inc)))
   ([material growth-fn]
-      (let [m @spirial-size
-            offset (int (/ @spirial-size 2))]
+      (let [m @(:size spirial-state)
+            offset (int (/ @(:size spirial-state) 2))
+            { x :x y :y z :z dir :dir size :size mat :material } spirial-state]
 
-        (when (and (= @spirial-x 0) (= 0 @spirial-z) (= @dir :forward)) (reset! dir :forward))
-        (when (and (= @spirial-x m) (= 0 @spirial-z)) (reset! dir :right))
-        (when (and (= @spirial-x m) (= m @spirial-z)) (reset! dir :back))
-        (when (and (= @spirial-x 0) (= m @spirial-z)) (reset! dir :left))
+        (when (and (= @x 0) (= 0 @z) (= @dir :forward)) (reset! dir :forward))
+        (when (and (= @x m) (= 0 @z)) (reset! dir :right))
+        (when (and (= @x m) (= m @z)) (reset! dir :back))
+        (when (and (= @x 0) (= m @z)) (reset! dir :left))
 
         (when
-            (and (= @spirial-x 0) (= 0 @spirial-z) (not= @dir :forward))
-          (swap! spirial-y + 4)
-          (swap! spirial-size dec)
+            (and (= @x 0) (= 0 @z) (not= @dir :forward))
+          (swap! y + 4)
+          (growth-fn)
           (reset! dir :forward))
 
-        (when (<= @spirial-size 1)
-          (reset-spirial)
-          (if (= :sand @spirial-material)
-            (reset! spirial-material material)
-            (reset! spirial-material :sand)))
+        (when (<= @size 1)
+          (reset-spirial!)
+          (if (= :sand @mat)
+            (reset! mat material)
+            (reset! mat :sand)))
 
         (case @dir
-          :forward (swap! spirial-x inc)
-          :back    (swap! spirial-x dec)
-          :left    (swap! spirial-z dec)
-          :right   (swap! spirial-z inc))
-        (blocks [[(- offset @spirial-x) @spirial-y (- offset @spirial-z)]] @spirial-material))))
+          :forward (swap! x inc)
+          :back    (swap! x dec)
+          :left    (swap! z dec)
+          :right   (swap! z inc))
+        (blocks [[(- offset @x) @y (- offset @z)]] @mat))))
 
 (comment
-  (reset-spirial)
+  (reset-spirial!)
   (dotimes [i 100]
     (spirial :dirt)
     ))
@@ -222,12 +290,15 @@
   (if-not (integer? t)
     (case t
       :sunset (.setTime active-world 12400)
-      :night (.setTime  active-world 21900)
-      :day  (.setTime  active-world 0))
-        (.setTime (first (bk/worlds)) t)))
+      :night  (.setTime  active-world 21900)
+      :day    (.setTime  active-world 0))
+    (.setTime (first (bk/worlds)) t)))
 )
 
-(bk/broadcast "Overtone, Clojure and Minecraft")
+(set-time :night)
+
+(bk/broadcast "[:overtone :clojure :minecraft]")
+(bk/broadcast "(do)")
 
 (bump-player)
 
@@ -348,12 +419,12 @@
 (remove-all-beat-triggers)
 
 (def spir-trigger
-  (do (reset-spirial)
+  (do (reset-spirial!)
       (sample-trigger
        [0 0 0 0 0 0 0 0
         1 0 0 0 0 0 0 0]  #(do
                              (snare :rate 0.5)
-                             (dotimes [_ (dec @spirial-size)] (spirial :stone))
+                             (dotimes [_ (dec @(:size spirial-state))] (spirial :stone))
                              ))))
 
 (remove-beat-trigger spir-trigger)
@@ -411,9 +482,6 @@
 (monster 1 1 1 :pig)
 (stop)
 
-
-
 (spirial :dirt)
-
 
 (blocks [[3 1 0]] :brick)
