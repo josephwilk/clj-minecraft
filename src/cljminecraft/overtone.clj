@@ -28,6 +28,7 @@
   (def ctx (b/setup-context player))
 
   (defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
+
   (defn monster [x y z type]
     (let [start-player-loc (.getLocation player)
           l (Location. active-world
@@ -225,58 +226,116 @@
                            [1 0 1]] 3 material)))
 
 
-(def spirial-state {:x (atom 0)
+(def spiral-state {:x (atom 0)
                     :y (atom 3)
                     :z (atom 0)
                     :size (atom 10)
                     :dir (atom :forward)
                     :material :sand})
 
-(reset! (:material spirial-state) :water)
+(reset! (:material spiral-state) :water)
 
-(defn reset-spirial! []
-  (reset! (:x spirial-state) 0)
-  (reset! (:z spirial-state) 0)
-  (reset! (:y spirial-state) 3)
-  (reset! (:size spirial-state) 10)
-  (reset! (:dir spirial-state) :forward))
+(defn reset-spiral! []
+  (reset! (:x spiral-state) 0)
+  (reset! (:z spiral-state) 0)
+  (reset! (:y spiral-state) 3)
+  (reset! (:size spiral-state) 10)
+  (reset! (:dir spiral-state) :forward))
 
-(defn spirial
-  ([material] (spirial material #(swap! (:size spirial-state) inc)))
-  ([material growth-fn]
-      (let [m @(:size spirial-state)
-            offset (int (/ @(:size spirial-state) 2))
-            { x :x y :y z :z dir :dir size :size mat :material } spirial-state]
+(defn spiral-cords
+  ([material] (spiral material #(swap! (:size spiral-state) inc) 1))
+  ([material growth-fn] (spiral growth-fn 1))
+  ([material growth-fn iterations]
+     (loop [cords []]
+       (if (= iterations (count cords))
+         cords
+         (let [{ x :x y :y z :z dir :dir size :size mat :material } spiral-state
+               m @size
+               offset (int (/ @size 2))]
+           (when (and (= @x 0) (= 0 @z) (= @dir :forward)) (reset! dir :forward))
+           (when (and (= @x m) (= 0 @z)) (reset! dir :right))
+           (when (and (= @x m) (= m @z)) (reset! dir :back))
+           (when (and (= @x 0) (= m @z)) (reset! dir :left))
 
-        (when (and (= @x 0) (= 0 @z) (= @dir :forward)) (reset! dir :forward))
-        (when (and (= @x m) (= 0 @z)) (reset! dir :right))
-        (when (and (= @x m) (= m @z)) (reset! dir :back))
-        (when (and (= @x 0) (= m @z)) (reset! dir :left))
+           (when
+               (and (= @x 0) (= 0 @z) (not= @dir :forward))
+             (swap! y + 4)
+             (growth-fn)
+             (reset! dir :forward))
 
-        (when
-            (and (= @x 0) (= 0 @z) (not= @dir :forward))
-          (swap! y + 4)
-          (growth-fn)
-          (reset! dir :forward))
+           (when (<= @size 1)
+             (reset-spiral!)
+             (if (= :sand @mat)
+               (reset! mat material)
+               (reset! mat :sand)))
 
-        (when (<= @size 1)
-          (reset-spirial!)
-          (if (= :sand @mat)
-            (reset! mat material)
-            (reset! mat :sand)))
+           (case @dir
+             :forward (swap! x inc)
+             :back    (swap! x dec)
+             :left    (swap! z dec)
+             :right   (swap! z inc))
+           (recur (concat cords [(- offset @x) @y (- offset @z) @material])))))))
 
-        (case @dir
-          :forward (swap! x inc)
-          :back    (swap! x dec)
-          :left    (swap! z dec)
-          :right   (swap! z inc))
-        (blocks [[(- offset @x) @y (- offset @z)]] @mat))))
+(defn spiral [meterial growth-fn iterations]
+  (blocks (spiral-cords material growth-fn iterations)))
 
 (comment
-  (reset-spirial!)
+  (reset-spiral!)
   (dotimes [i 100]
-    (spirial :dirt)
+    (spiral :dirt)
     ))
+
+(def triangle-state
+  {:x (atom 0)
+   :y (atom 3)
+   :z (atom 0)
+   :size (atom 10)
+   :dir (atom :forward)
+   :material :coal})
+
+(def reset-triangle! []
+  (reset! (:x triangle-state) 0)
+  (reset! (:z triangle-state) 0)
+  (reset! (:y triangle-state) 3)
+  (reset! (:size triangle-state) 10)
+  (reset! (:dir triangle-state) :forward))
+
+(defn triangle-cords
+  ([material]          (triangle material #(swap! (:size triangle-state) inc) 1))
+  ([materil growth-fn] (triangle material growth-fn 1))
+  ([material growth-fn iterations]
+     (loop [cords []]
+       (if (= iterations (count cords))
+         cords
+
+         (let [{ x :x y :y z :z dir :dir size :size mat :material} triangle-state
+               m @size
+               offset (int (/ @size 2))]
+
+           (when (and (= @x 0) (= 0 @z) (= @dir :forward)) (reset! dir :forward))
+           (when (and (= @x m) (= m @z)) (reset! dir :back))
+           (when (and (= @x 0) (= m @z)) (reset! dir :left))
+
+           (when
+               (and (= @x 0) (= 0 @z) (not= @dir :forward))
+             (swap! y + 4)
+             (growth-fn)
+             (reset! dir :forward))
+
+           (when (<= @size 1)
+             (reset-triangle!)
+             (if (= :sand @mat)
+               (reset! mat material)
+               (reset! mat :sand)))
+
+           (case @dir
+             :forward (do (swap! x inc) (swap! z inc))
+             :back    (swap! x dec)
+             :left    (swap! z dec))
+           (recur (concat [(- offset @x) @y (- offset @z) @mat])))))))
+
+(defn triangle [material growth-fn iterations]
+  (blocks (triangle-cords material growth-fn iterations)))
 
 ;;(dotimes [i 1] (bump-player))
 
@@ -419,12 +478,12 @@
 (remove-all-beat-triggers)
 
 (def spir-trigger
-  (do (reset-spirial!)
+  (do (reset-spiral!)
       (sample-trigger
        [0 0 0 0 0 0 0 0
         1 0 0 0 0 0 0 0]  #(do
                              (snare :rate 0.5)
-                             (dotimes [_ (dec @(:size spirial-state))] (spirial :stone))
+                             (spiral :stone #(swap! @(:size spiral-state) dec) @(:size spiral-state))
                              ))))
 
 (remove-beat-trigger spir-trigger)
@@ -466,8 +525,8 @@
 (block 5 7 0 :air)
 
 (bump-player)
-(reset-spirial)
-(reset! spirial-material :stone)
+(reset-spiral)
+(reset! spiral-material :stone)
 (set-time :day)
 (remove-beat-trigger sub2-trigger)
 (remove-all-beat-triggers)
@@ -482,6 +541,6 @@
 (monster 1 1 1 :pig)
 (stop)
 
-(spirial :dirt)
+(spiral :dirt)
 
 (blocks [[3 1 0]] :brick)
