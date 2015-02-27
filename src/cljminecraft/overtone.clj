@@ -167,6 +167,9 @@
   ;;  (teleport 0 200 0)
   )
 
+(defn paint-line [steps mat]
+  (blocks (map (fn [xy] [xy -1 0 mat]) (range steps))))
+
 (def stairs (atom {:x -1 :y -1 :z 2}))
 
 (defn add-step [thing]
@@ -422,19 +425,22 @@
        (blocks cords)
        cords)))
 
-(reset-triangle!)
-(dotimes [_ 100] (paint-triangle :dirt))
+;;(reset-triangle!)
+;;(dotimes [_ 100] (paint-triangle :grass))
 ;;(dotimes [i 1] (bump-player))
 
+(def allow-bump (atom true))
 (defn bump-player []
   (when
-      (< (.getY (.getLocation player))
-         200)
+      (and
+       @allow-bump
+       (< (.getY (.getLocation player))
+          200))
 
     (teleport 0 3 0 )
     (blocks [[0 -1 0]] :grass)))
 
-(bump-player)
+;;(bump-player)
 ;;(dotimes [_ 100] (bump-player))
 ;;(set-time :day)
 ;;(bump-player)
@@ -446,6 +452,23 @@
       :night  (.setTime  active-world 21900)
       :day    (.setTime  active-world 0))
     (.setTime (first (bk/worlds)) t)))
+
+(defn setup-world []
+  (block-fill 100 -65 100 0 0 :bedrock)
+  (block-fill 100 -65 100 -150 0 :bedrock)
+  (block-fill 100 -65 100 150 0 :bedrock)
+
+  (block-fill 100 -65 100 100 100 :bedrock)
+  (block-fill 100 -65 100 150 -150 :bedrock)
+
+  (block-fill 100 -65 100 0 -150 :bedrock)
+  (block-fill 100 -65 100 -150 -150 :bedrock)
+  (block-fill 100 -65 100 -150 150 :bedrock)
+
+  (block-fill 100 -65 100 :water)
+
+  (block-fill 50 -2 50 :water)
+  (block-fill 20 -2 20 0 -100 :water))
 )
 
 (set-time :day)
@@ -499,27 +522,6 @@
 
 (ctl-global-clock 8.0)
 
-(def cell-size (atom 1))
-(def growth (atom 0))
-(def material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :skull :air :stationary_water :water :lava]))
-(def instructions [(b/pen-up)
-                   (b/up 3)
-                   (b/forward 1)
-                   (b/right 4)
-                   (b/pen-down)
-                   (b/back 1)
-;;                   (b/up 2)
-;;                   (b/forward 4)
-;;                   (b/down  3)
-
-
-;;                   (b/left (rand-int 10))
-  ;;                 (b/right (rand-int 10))
-    ;;               (b/up (rand-int 10))
-      ;;             (b/right (rand-int 10))
-        ;;           (b/down (rand-int 10))
-                   ])
-
 (reset! cell-size 20)
 
 (def trigger-g77218
@@ -533,20 +535,42 @@
 (remove-all-beat-triggers)
 
 (def sub-trigger
-  (sample-trigger
-   [1 0 0 0 0 0 0 0
-    0 0 0 0 0 0 0 0
-    1 0 1 0 0 0 0 0
-    0 0 0 0 0 0 0 0]
-   (fn []
-     (def ctx (b/setup-context player))
-     (swap! growth inc)
-     (if (= (nth material-bag @growth) :water)
-       (do       (sample-player subby :rate 0.5 :amp 1.0)
-                 (sample-player wop :rate -0.8 :amp 1.0))
-       (sample-player subby :rate 0.4)
-       )
-     (draw (nth material-bag @growth) instructions))))
+  (do (def cell-size (atom 1))
+      (def growth (atom 0))
+      (def material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :skull :air :stationary_water :water :lava]))
+
+      (def instructions [(b/pen-up)
+                         (b/up 3)
+                         (b/forward 1)
+                         (b/right 4)
+                         (b/pen-down)
+                         (b/back 1)
+                         ;;                   (b/up 2)
+                         ;;                   (b/forward 4)
+                         ;;                   (b/down  3)
+
+
+                         ;;                   (b/left (rand-int 10))
+                         ;;                 (b/right (rand-int 10))
+                         ;;               (b/up (rand-int 10))
+                         ;;             (b/right (rand-int 10))
+                         ;;           (b/down (rand-int 10))
+                         ])
+
+      (sample-trigger
+       [1 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0
+        1 0 1 0 0 0 0 0
+        0 0 0 0 0 0 0 0]
+       (fn []
+         (def ctx (b/setup-context player))
+         (swap! growth inc)
+         (if (= (nth material-bag @growth) :water)
+           (do       (sample-player subby :rate 0.5 :amp 1.0)
+                     (sample-player wop :rate -0.8 :amp 1.0))
+           (sample-player subby :rate 0.4)
+           )
+         (draw (nth material-bag @growth) instructions)))))
 
 (set-time :day)
 
@@ -636,10 +660,6 @@
 (remove-all-sample-triggers)
 
 
-(defn paint-line [steps mat]
-  (blocks (map (fn [xy] [xy -1 0 mat]) (range steps)))
-  )
-
 (def trigger-g62421
   (on-beat-trigger
    4 (fn [b]
@@ -682,27 +702,6 @@
 ;;:mob_spawner onfire pigs
 (def block-material [:ice :snow_block :quartz_block :dimond_block])
 
-(defn setup-world []
-  (block-fill 100 -65 100 0 0 :bedrock)
-  (block-fill 100 -65 100 -150 0 :bedrock)
-  (block-fill 100 -65 100 150 0 :bedrock)
-
-  (block-fill 100 -65 100 100 100 :bedrock)
-  (block-fill 100 -65 100 150 -150 :bedrock)
-
-  (block-fill 100 -65 100 0 -150 :bedrock)
-  (block-fill 100 -65 100 -150 -150 :bedrock)
-  (block-fill 100 -65 100 -150 150 :bedrock)
-
-  (block-fill 100 -65 100 :water)
-
-  (block-fill 50 -2 50 :water)
-  (block-fill 20 -2 20 0 -100 :water)
-  )
-
-(setup-world)
-
-
 (block 1 -1 1 :stone)
 (monster 1 1 1 :pig)
 (stop)
@@ -721,3 +720,4 @@
 (blocks [[3 1 0]] :brick)
 (set-time :day)
 ;;(destroyer-of-worlds)
+;;mv create clojure normal -g EmptyWorldGenerator
