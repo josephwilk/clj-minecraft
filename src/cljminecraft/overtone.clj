@@ -469,67 +469,30 @@
 
   (block-fill 50 -2 50 :water)
   (block-fill 20 -2 20 0 -100 :water))
+
+(def instr2 [(b/pen-up)
+             (b/up 5)
+             (b/left 3)
+             (b/forward 1)
+             (b/pen-down)
+             (b/forward (mod @growth 10))])
+(def mat2 [:sand])
 )
 
-(set-time :day)
+(set-time :night)
 
 (bk/broadcast "[:overtone :clojure :minecraft]")
 (bk/broadcast "(do)")
 
-(bump-player)
-
-(one-time-beat-trigger 32 64 (fn [& _]
-                                 (boom-s)
-                                 (set-time :day)
-                                 ))
-
-(pattern->cords [[0 1 0]
-                 [1 0 1]
-                 [0 1 0]] 3 :dirt)
-
-(block -1 -1 1 :dirt)
-(circle 3 3 :sand)
-(circle 5 3 :sand)
-(circle 8 3 :sand)
-
-(circle 8 -1 :sand)
-
-(circle 3 :sand)
-(diamond :air)
-(diamond :sand)
-(corners :sand)
-
-(block 0 -1 0 :stone)
-
-(doseq [i (range 10)] (add-step :dirt))
-
-(comment
-  (loop [x -1
-         y -1]
-    (block x y 0 :air)
-    (when (> x -10)
-      (recur (dec x) (inc y))))
-  )
-
-(set-time :day)
-
-(blocks [[-5 -1 0]
-         [-5 -1 1]
-         [-6 -1 1]
-         [-6 -1 0]] :dirt)
-
-;;(.setY (:origin ctx) 70)
+(one-time-beat-trigger 32 64 (fn [& _] (boom-s) (set-time :day)))
 
 (ctl-global-clock 8.0)
-
-(reset! cell-size 20)
 
 (def trigger-g77218
   (on-beat-trigger 16 #(do
                         (add-step (nth (cycle [:grass :dirt]) (* -1 (:x @stairs))) )
                         (boom-s)
-
-                       )))
+)))
 
 (remove-beat-trigger trigger-g77218)
 (remove-all-beat-triggers)
@@ -537,7 +500,7 @@
 (def sub-trigger
   (do (def cell-size (atom 1))
       (def growth (atom 0))
-      (def material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :skull :air :stationary_water :water :lava]))
+      (def material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :diamond_brick :gold_brick :air :stationary_water :water :lava]))
 
       (def instructions [(b/pen-up)
                          (b/up 3)
@@ -545,16 +508,14 @@
                          (b/right 4)
                          (b/pen-down)
                          (b/back 1)
-                         ;;                   (b/up 2)
-                         ;;                   (b/forward 4)
-                         ;;                   (b/down  3)
-
-
-                         ;;                   (b/left (rand-int 10))
-                         ;;                 (b/right (rand-int 10))
-                         ;;               (b/up (rand-int 10))
-                         ;;             (b/right (rand-int 10))
-                         ;;           (b/down (rand-int 10))
+                         (comment (b/up 2)
+                                  (b/forward 4)
+                                  (b/down  3)
+                                  (b/left (rand-int 10))
+                                  (b/right (rand-int 10))
+                                  (b/up (rand-int 10))
+                                  (b/right (rand-int 10))
+                                  (b/down (rand-int 10)))
                          ])
 
       (sample-trigger
@@ -572,27 +533,7 @@
            )
          (draw (nth material-bag @growth) instructions)))))
 
-(set-time :day)
-
 (remove-beat-trigger sub-trigger)
-(remove-all-beat-triggers)
-
-(def instr2 [(b/pen-up)
-             (b/up 5)
-             (b/left 3)
-             (b/forward 1)
-             (b/pen-down)
-             (b/forward (mod @growth 10))])
-(def mat2 [:sand])
-
-(def high-trigger
-  (on-beat-trigger 32  #(do
-                          (bump-player)
-                          (click :rate 1.0)
-                          (click :rate -0.5)
-                          )))
-
-(remove-beat-trigger high-trigger)
 (remove-all-beat-triggers)
 
 (def spir-trigger
@@ -609,30 +550,20 @@
          (paint-triangle :stone #(swap! (:size triangle-state) inc) (* 2 @(:size spiral-state)))
          (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state))))))))
 
-(volume 1)
-
 (reset! (:material spiral-state) :diamond_block)
 (remove-beat-trigger spir-trigger)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
 
-
-
-(bump-player)
-
-
 (def ring-trigger (on-beat-trigger
         32
         (fn []
           (ring-hat :amp 0.2)
-          (circle (inc (mod @growth 20)) :sand)
+          (circle (inc (mod @growth 20)) (choose [:gravel :sand]))
 ;;          (draw (choose mat2) instr2)
           )))
 
 (remove-beat-trigger ring-trigger)
-
-(set-time :day)
-
 (remove-all-sample-triggers)
 
 (def sub2-trigger
@@ -649,16 +580,9 @@
               [5 2 0]] :dirt)
      (draw :dirt [(b/pen-up) (b/forward 10) (b/pen-down) (b/up 10) (b/left 1) (b/forward 10) (b/left 1) (b/forward 3) (b/left 2)]))))
 
-(block 5 7 0 :air)
-
-(bump-player)
-(reset-spiral)
-(reset! spiral-material :stone)
-(set-time :day)
 (remove-beat-trigger sub2-trigger)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
-
 
 (def trigger-g62421
   (on-beat-trigger
@@ -675,22 +599,19 @@
                (reverb-kick-s :start 0.09)
                ))))))
 
-
 (remove-beat-trigger trigger-g62421)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
 
-;;diamond_block ;nice glow
-;;ice snow_block
-
 (def trigger-g62422
   (do
     (on-beat-trigger 8 (fn [b]
+                         (reverb-kick-s)
                          (if (= 0.0 (mod b 16))
                            (word "CLOJURE"  20 (+ (rand-int 10) 25) (choose (concat block-material [:tnt :sand])))
                            (word "OVERTONE" 20 (+ (rand-int 10) 10)  (choose (concat block-material [:tnt :sand]))))
                          ;;(word "OVERTONE" 20 :air)
-                         (reverb-kick-s)
+
                          ))))
 
 (remove-beat-trigger trigger-g62422)
@@ -702,22 +623,8 @@
 ;;:mob_spawner onfire pigs
 (def block-material [:ice :snow_block :quartz_block :dimond_block])
 
-(block 1 -1 1 :stone)
-(monster 1 1 1 :pig)
-(stop)
-(teleport 260 260 300)
+(do (big-reverb-kick-s) (set-time :day))
 
-(ctl (foundation-output-group) :master-volume 1)
-(stop-all)
-
-(do (big-reverb-kick-s)
-    (set-time :day))
-
-(bump-player)
-
-(paint-spiral :dirt)
-
-(blocks [[3 1 0]] :brick)
 (set-time :day)
 ;;(destroyer-of-worlds)
 ;;mv create clojure normal -g EmptyWorldGenerator
