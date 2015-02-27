@@ -1,6 +1,6 @@
 (ns cljminecraft.overtone
   "Music and Minecraft."
-  (:import [org.bukkit Location])
+  (:import [org.bukkit Location Material])
   (:use [overtone.core] [mud.core] [mud.timing])
   (:require [cljminecraft.bukkit :as bk]
             [cljminecraft.blocks :as b]
@@ -11,7 +11,21 @@
 ;;(connect-external-server)
 
 (do
+  (def block-material
+    (->>
+     (keys i/materials)
+     (filter #(re-find #"^[\w]*_block$" (str (name %1))))
+     (remove #(some #{%1} [:cake_block :iron_door_block :sugar_cane_block :bed_block])))
+    )
+  (def ore-material (filter #(re-find #"_ore" (str (name %1))) (keys i/materials)))
+
   (do
+    (def big-reverb-kick-s (freesound 219515))
+    (def reverb-kick-s (freesound 90243))
+
+    (def line-s (freesound 144919))
+    (def bonus-s (freesound 55570))
+
     (def highhat (freesound 53532))
     (def dirty-kick (freesound 30669))
     (def ring-hat (freesound 12912))
@@ -65,6 +79,30 @@
 
 ;;(explode 0 -0 0)
 
+(defn blocks-around-player [size mat]
+  (let [l (.getLocation player)
+        grid (range (- 0 size) size)]
+    (map
+     #(let [b-l (.getLocation %1)]
+        [(.getX b-l) (.getY b-l) (.getZ b-l) mat])
+     (filter
+      #(not= Material/AIR (.getType %1))
+      (mapcat
+       (fn [x]
+         (mapcat
+          (fn [z]
+            (map (fn [y]
+                   (.getBlock
+                    (Location. active-world
+                               (+ x (.getX l))
+                               (+ y (.getY l))
+                               (+ z (.getZ l))))
+                   )
+                 grid)
+)
+          (range -10 10)))
+       (range -10 10))))))
+
 (defn blocks "relative to player"
   ([actions material] (blocks (map #(if (= 3 (count %1)) (concat %1 [material])) actions)) )
   ([actions]
@@ -103,6 +141,32 @@
          (.setType (.getItemType m))
          (.setData (.getData m)))))))
 
+(defn block-fill
+  ([x y z mat] (block-fill x y z 0 0 mat))
+  ([x y z offset mat] (block-fill x y z offset 0 mat))
+  ([x y z x-offset z-offset mat]
+      (blocks  (mapcat (fn [i] (map (fn [x] [(+ x-offset i) y (+ z-offset x) mat]) (range (- 0 x) x))) (range (- 0 z) z)))))
+
+(defn blocks-absolute "absolute"
+  ([actions material] (blocks (map #(if (= 3 (count %1)) (concat %1 [material])) actions)))
+  ([actions]
+     (bk/ui-sync
+      @cljminecraft.core/clj-plugin
+      (fn []
+        (doseq [[x y z m] actions]
+          (let [m (i/get-material m)
+                l (Location. active-world x y z)]
+            (doto (.getBlock l)
+              (.setData 0)
+              (.setType (.getItemType m))
+              (.setData (.getData m)))))))))
+
+(defn destroyer-of-worlds []
+  (blocks-absolute (blocks-around-player 100 :gravel))
+  ;;  (Thread/sleep 5000)
+  ;;  (teleport 0 200 0)
+  )
+
 (def stairs (atom {:x -1 :y -1 :z 2}))
 
 (defn add-step [thing]
@@ -110,16 +174,31 @@
   (swap! stairs assoc :x (dec (:x @stairs)))
   (swap! stairs assoc :y (min 5 (inc (:y @stairs)))))
 
-(defn pattern->cords [pattern y material]
-  (mapcat
-   (fn [[x line]]
-     (map
-      (fn [[z cell]]
-        (case cell
-          1 [x y z material]
-          0 [x y z :air]))
-      (map vector (range (- 0 (int (/ (count line) 2))) (- (count line) (int (/ (count line) 2)))) line)))
-   (map vector (range (- 0 (int (/ (count (first pattern)) 2))) (count (first pattern))) pattern)))
+(defn letter-pattern->cords
+  ([pattern x material] (letter-pattern->cords x 0 0 material))
+  ([pattern x y-offset z-offset material]
+     (mapcat
+      (fn [[y line]]
+        (map
+         (fn [[z cell]]
+           (case cell
+             1 [x (+ y-offset (- 0 y)) (- (+ z-offset z) 20) material]
+             0 [x (+ y-offset (- 0 y)) (- (+ z-offset z) 20) :air]))
+         (map vector (range (- 0 (int (/ (count line) 2))) (- (count line) (int (/ (count line) 2)))) line)))
+      (map vector (range (- 0 (int (/ (count (first pattern)) 2))) (count (first pattern))) pattern))))
+
+(defn pattern->cords
+  ([pattern y material] (pattern->cords y 0 material))
+  ([pattern y offset material]
+      (mapcat
+       (fn [[x line]]
+         (map
+          (fn [[z cell]]
+            (case cell
+              1 [x y z material]
+              0 [x y z :air]))
+          (map vector (range (+ offset (- 0 (int (/ (count line) 2)))) (+ offset (- (count line) (int (/ (count line) 2))))) line)))
+       (map vector (range (- 0 (int (/ (count (first pattern)) 2))) (count (first pattern))) (reverse pattern)))))
 
 (def letter-patterns
   {:C [[1 1 1 1 1]
@@ -194,12 +273,12 @@
        [1 0 0 0 1]
        [1 0 0 0 1]]})
 
-(defn letter [char y material]
-  (blocks (pattern->cords (get letter-patterns char) y material)))
+(defn letter [char x y-offset z-offset material]
+  (blocks (letter-pattern->cords (get letter-patterns char) x y-offset z-offset material)))
 
-(defn word [word y material]
-  (doseq [l (map keyword (drop 1 (clojure.string/split word #"")))]
-    (letter l y material)))
+(defn word [word x z material]
+  (doseq [[idx c] (map vector (range) (map keyword (drop 1 (clojure.string/split word #""))))]
+    (letter c x z (* 6 idx) material)))
 
 (defn circle
   ([size thing] (circle size -1 thing))
@@ -227,13 +306,13 @@
 
 
 (def spiral-state {:x (atom 0)
-                    :y (atom 3)
-                    :z (atom 0)
-                    :size (atom 10)
-                    :dir (atom :forward)
-                    :material :sand})
+                   :y (atom 3)
+                   :z (atom 0)
+                   :size (atom 10)
+                   :dir (atom :forward)
+                   :material (atom :sand)})
 
-(reset! (:material spiral-state) :water)
+(reset! (:material spiral-state) :diamond_block)
 
 (defn reset-spiral! []
   (reset! (:x spiral-state) 0)
@@ -243,12 +322,12 @@
   (reset! (:dir spiral-state) :forward))
 
 (defn spiral-cords
-  ([material] (spiral material #(swap! (:size spiral-state) inc) 1))
-  ([material growth-fn] (spiral growth-fn 1))
   ([material growth-fn iterations]
      (loop [cords []]
-       (if (= iterations (count cords))
-         cords
+       (if (>= (count cords) iterations)
+         (do
+           (println cords)
+           cords)
          (let [{ x :x y :y z :z dir :dir size :size mat :material } spiral-state
                m @size
                offset (int (/ @size 2))]
@@ -274,16 +353,20 @@
              :back    (swap! x dec)
              :left    (swap! z dec)
              :right   (swap! z inc))
-           (recur (concat cords [(- offset @x) @y (- offset @z) @material])))))))
+           (recur (conj cords [(- offset @x) @y (- offset @z) @mat])))))))
 
-(defn spiral [meterial growth-fn iterations]
-  (blocks (spiral-cords material growth-fn iterations)))
+(defn paint-spiral
+  ([material]           (paint-spiral material #(swap! (:size spiral-state) inc) 1))
+  ([material growth-fn] (paint-spiral growth-fn 1))
+  ([material growth-fn iterations]
+     (blocks (spiral-cords material growth-fn iterations))))
 
 (comment
   (reset-spiral!)
   (dotimes [i 100]
-    (spiral :dirt)
-    ))
+    (paint-spiral :dirt)
+    )
+  )
 
 (def triangle-state
   {:x (atom 0)
@@ -291,59 +374,70 @@
    :z (atom 0)
    :size (atom 10)
    :dir (atom :forward)
-   :material :coal})
+   :material (atom :grass)})
 
-(def reset-triangle! []
+(defn reset-triangle! []
   (reset! (:x triangle-state) 0)
   (reset! (:z triangle-state) 0)
   (reset! (:y triangle-state) 3)
   (reset! (:size triangle-state) 10)
   (reset! (:dir triangle-state) :forward))
 
-(defn triangle-cords
-  ([material]          (triangle material #(swap! (:size triangle-state) inc) 1))
-  ([materil growth-fn] (triangle material growth-fn 1))
+(defn triangle-cords [material growth-fn iterations]
+  (loop [cords []]
+    (if (>= (count cords) iterations)
+      cords
+
+      (let [{ x :x y :y z :z dir :dir size :size mat :material} triangle-state
+            m @size
+            offset (int (/ @size 2))]
+
+        (when (and (= @x 0) (= 0 @z) (= @dir :forward)) (reset! dir :forward))
+        (when (and (= @x m) (= m @z)) (reset! dir :back))
+        (when (and (= @x 0) (= m @z)) (reset! dir :left))
+
+        (when
+            (and (= @x 0) (= 0 @z) (not= @dir :forward))
+          (swap! y + 4)
+          (growth-fn)
+          (reset! dir :forward))
+
+        (when (<= @size 1)
+          (reset-triangle!)
+          (if (= :sand @mat)
+            (reset! mat material)
+            (reset! mat :sand)))
+
+        (case @dir
+          :forward (do (swap! x inc) (swap! z inc))
+          :back    (swap! x dec)
+          :left    (swap! z dec))
+        (recur (conj cords [(- offset @x) @y (- offset @z) @mat]))))))
+
+(defn paint-triangle
+  ([material]           (paint-triangle material #(swap! (:size triangle-state) inc) 1))
+  ([material growth-fn] (paint-triangle material growth-fn 1))
   ([material growth-fn iterations]
-     (loop [cords []]
-       (if (= iterations (count cords))
-         cords
+     (let [cords (triangle-cords material growth-fn iterations)]
+       (blocks cords)
+       cords)))
 
-         (let [{ x :x y :y z :z dir :dir size :size mat :material} triangle-state
-               m @size
-               offset (int (/ @size 2))]
-
-           (when (and (= @x 0) (= 0 @z) (= @dir :forward)) (reset! dir :forward))
-           (when (and (= @x m) (= m @z)) (reset! dir :back))
-           (when (and (= @x 0) (= m @z)) (reset! dir :left))
-
-           (when
-               (and (= @x 0) (= 0 @z) (not= @dir :forward))
-             (swap! y + 4)
-             (growth-fn)
-             (reset! dir :forward))
-
-           (when (<= @size 1)
-             (reset-triangle!)
-             (if (= :sand @mat)
-               (reset! mat material)
-               (reset! mat :sand)))
-
-           (case @dir
-             :forward (do (swap! x inc) (swap! z inc))
-             :back    (swap! x dec)
-             :left    (swap! z dec))
-           (recur (concat [(- offset @x) @y (- offset @z) @mat])))))))
-
-(defn triangle [material growth-fn iterations]
-  (blocks (triangle-cords material growth-fn iterations)))
-
+(reset-triangle!)
+(dotimes [_ 100] (paint-triangle :dirt))
 ;;(dotimes [i 1] (bump-player))
 
 (defn bump-player []
-  (teleport 0 3 0 )
-  (blocks [[0 -1 0]] :grass))
+  (when
+      (< (.getY (.getLocation player))
+         200)
 
+    (teleport 0 3 0 )
+    (blocks [[0 -1 0]] :grass)))
+
+(bump-player)
 ;;(dotimes [_ 100] (bump-player))
+;;(set-time :day)
+;;(bump-player)
 
 (defn set-time [t]
   (if-not (integer? t)
@@ -354,7 +448,7 @@
     (.setTime (first (bk/worlds)) t)))
 )
 
-(set-time :night)
+(set-time :day)
 
 (bk/broadcast "[:overtone :clojure :minecraft]")
 (bk/broadcast "(do)")
@@ -478,16 +572,25 @@
 (remove-all-beat-triggers)
 
 (def spir-trigger
-  (do (reset-spiral!)
-      (sample-trigger
-       [0 0 0 0 0 0 0 0
-        1 0 0 0 0 0 0 0]  #(do
-                             (snare :rate 0.5)
-                             (spiral :stone #(swap! @(:size spiral-state) dec) @(:size spiral-state))
-                             ))))
+  (do
+    (reset! (:material spiral-state) :grass)
+    (reset! (:material triangle-state) :ice)
+    (reset-spiral!)
+    (sample-trigger
+     [0 0 0 0 0 0 0 0
+      1 0 0 0 0 0 0 0]
+     (fn []
+       (snare :rate 1.0)
+       (if (> (rand-int 100) 50)
+         (paint-triangle :stone #(swap! (:size triangle-state) inc) (* 2 @(:size spiral-state)))
+         (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state))))))))
 
+(volume 1)
+
+(reset! (:material spiral-state) :diamond_block)
 (remove-beat-trigger spir-trigger)
 (remove-all-beat-triggers)
+(remove-all-sample-triggers)
 
 
 
@@ -514,13 +617,13 @@
    (fn []
      (highhat :rate 1.0)
 
-     (monster 0 1 0 :pig)
-;;     (bump-player)
+     (monster 0 0 0 :pig)
+     (bump-player)
      (block 5 7 0 :dirt)
      (blocks [[5 5 0]
               [5 4 0]
               [5 2 0]] :dirt)
-     (draw :dirt [(b/pen-up) (b/forward 10) (b/pen-down) (b/up 10) (b/left 1) (b/forward 10) (b/left 1)]))))
+     (draw :dirt [(b/pen-up) (b/forward 10) (b/pen-down) (b/up 10) (b/left 1) (b/forward 10) (b/left 1) (b/forward 3) (b/left 2)]))))
 
 (block 5 7 0 :air)
 
@@ -533,14 +636,88 @@
 (remove-all-sample-triggers)
 
 
-(dotimes [i 50]
-  (dotimes [x 50]
-    (blocks [[i -1 x]] :grass)))
+(defn paint-line [steps mat]
+  (blocks (map (fn [xy] [xy -1 0 mat]) (range steps)))
+  )
+
+(def trigger-g62421
+  (on-beat-trigger
+   4 (fn [b]
+       (let [beat (int (mod b 16))]
+         (case beat
+           0 (do (paint-line 10 :mob_spawner)
+                 (line-s :rate 1.0 :start 0.4 :end 0.42)
+                 (reverb-kick-s :amp 1.1)
+                 (bonus-s :rate 0.2))
+
+           (do (paint-line 10 :ice)
+               (line-s :rate 1.0 :start 0.4 :end 0.42)
+               (reverb-kick-s :start 0.09)
+               ))))))
+
+
+(remove-beat-trigger trigger-g62421)
+(remove-all-beat-triggers)
+(remove-all-sample-triggers)
+
+;;diamond_block ;nice glow
+;;ice snow_block
+
+(def trigger-g62422
+  (do
+    (on-beat-trigger 8 (fn [b]
+                         (if (= 0.0 (mod b 16))
+                           (word "CLOJURE"  20 (+ (rand-int 10) 25) (choose (concat block-material [:tnt :sand])))
+                           (word "OVERTONE" 20 (+ (rand-int 10) 10)  (choose (concat block-material [:tnt :sand]))))
+                         ;;(word "OVERTONE" 20 :air)
+                         (reverb-kick-s)
+                         ))))
+
+(remove-beat-trigger trigger-g62422)
+(remove-all-beat-triggers)
+(set-time :day)
+
+(explode 20 20 5)
+
+;;:mob_spawner onfire pigs
+(def block-material [:ice :snow_block :quartz_block :dimond_block])
+
+(defn setup-world []
+  (block-fill 100 -65 100 0 0 :bedrock)
+  (block-fill 100 -65 100 -150 0 :bedrock)
+  (block-fill 100 -65 100 150 0 :bedrock)
+
+  (block-fill 100 -65 100 100 100 :bedrock)
+  (block-fill 100 -65 100 150 -150 :bedrock)
+
+  (block-fill 100 -65 100 0 -150 :bedrock)
+  (block-fill 100 -65 100 -150 -150 :bedrock)
+  (block-fill 100 -65 100 -150 150 :bedrock)
+
+  (block-fill 100 -65 100 :water)
+
+  (block-fill 50 -2 50 :water)
+  (block-fill 20 -2 20 0 -100 :water)
+  )
+
+(setup-world)
+
 
 (block 1 -1 1 :stone)
 (monster 1 1 1 :pig)
 (stop)
+(teleport 260 260 300)
 
-(spiral :dirt)
+(ctl (foundation-output-group) :master-volume 1)
+(stop-all)
+
+(do (big-reverb-kick-s)
+    (set-time :day))
+
+(bump-player)
+
+(paint-spiral :dirt)
 
 (blocks [[3 1 0]] :brick)
+(set-time :day)
+;;(destroyer-of-worlds)
