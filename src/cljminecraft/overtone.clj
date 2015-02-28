@@ -40,6 +40,8 @@
   (def start-player-loc  (.getLocation player))
   (def ctx (b/setup-context player))
 
+  (defn storm [on] (.setStorm active-world on))
+
   (defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
 
   (defn life [x y z thing]
