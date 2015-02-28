@@ -63,6 +63,8 @@
       (.setZ (+ z (.getZ l))))
     (.teleport player l)))
 
+
+
 (defn explode [x y z]
   (let [l (.getLocation player)]
     (doto l
@@ -317,6 +319,9 @@
        (blocks cords thing)
        cords)))
 
+;;(circle 5 5 :gold_block true)
+(set-time :day)
+
 (defn diamond
   [material]
   (blocks (pattern->cords [[0 1 0]
@@ -339,6 +344,7 @@
 (reset! (:material spiral-state) :diamond_block)
 
 (defn reset-spiral! []
+  (def start-player-loc  (.getLocation player))
   (reset! (:x spiral-state) 0)
   (reset! (:z spiral-state) 0)
   (reset! (:y spiral-state) 3)
@@ -349,9 +355,7 @@
   ([material growth-fn iterations]
      (loop [cords []]
        (if (>= (count cords) iterations)
-         (do
-           (println cords)
-           cords)
+         cords
          (let [{ x :x y :y z :z dir :dir size :size mat :material } spiral-state
                m @size
                offset (int (/ @size 2))]
@@ -380,10 +384,10 @@
            (recur (conj cords [(- offset @x) @y (- offset @z) @mat])))))))
 
 (defn paint-spiral
-  ([material]           (paint-spiral material #(swap! (:size spiral-state) inc) 1))
+  ([material]           (paint-spiral material #(swap! (:size spiral-state) + 4) 1))
   ([material growth-fn] (paint-spiral growth-fn 1))
   ([material growth-fn iterations]
-     (blocks (spiral-cords material growth-fn iterations))))
+     (fixed-blocks (spiral-cords material growth-fn iterations))))
 
 (comment
   (reset-spiral!)
@@ -398,14 +402,17 @@
    :z (atom 0)
    :size (atom 10)
    :dir (atom :forward)
-   :material (atom :grass)})
+   :material (atom :grass)
+   :fix-y (atom 0)})
 
 (defn reset-triangle! []
+  (def start-player-loc  (.getLocation player))
   (reset! (:x triangle-state) 0)
   (reset! (:z triangle-state) 0)
   (reset! (:y triangle-state) 3)
   (reset! (:size triangle-state) 10)
-  (reset! (:dir triangle-state) :forward))
+  (reset! (:dir triangle-state) :forward)
+  )
 
 (defn triangle-cords [material growth-fn iterations]
   (loop [cords []]
@@ -436,30 +443,32 @@
           :forward (do (swap! x inc) (swap! z inc))
           :back    (swap! x dec)
           :left    (swap! z dec))
-        (recur (conj cords [(- offset @x) @y (- offset @z) @mat]))))))
+        (recur (conj cords [(- (- offset @x) 2) @y (- offset @z) @mat]))))))
 
 (defn paint-triangle
-  ([material]           (paint-triangle material #(swap! (:size triangle-state) inc) 1))
+  ([material]           (paint-triangle material #(swap! (:size triangle-state) inc) 2))
   ([material growth-fn] (paint-triangle material growth-fn 1))
   ([material growth-fn iterations]
+     (reset! (:material triangle-state) material)
      (let [cords (triangle-cords material growth-fn iterations)]
-       (blocks cords)
+       (fixed-blocks cords)
        cords)))
 
 ;;(reset-triangle!)
-;;(dotimes [_ 100] (paint-triangle :grass))
+;;(dotimes [_ 100] (paint-triangle :air))
 ;;(dotimes [i 1] (bump-player))
 
 (def allow-bump (atom true))
 (defn bump-player []
-  (when
-      (and
-       @allow-bump
-       (< (.getY (.getLocation player))
-          200))
-
-    (teleport 0 3 0 )
-    (blocks [[0 -1 0]] :grass)))
+  (let [y (int (.getY (.getLocation player)))
+        mat (nth (cycle [:slime_block :snow_block :ice :coal_block]) y)]
+    (println y)
+    (println mat)
+    (if (and @allow-bump (< y 200))
+      (do
+        (teleport 0 3 0 )
+        (blocks [[0 -1 0 mat]]))
+      (reset! allow-bump false))))
 
 ;;(bump-player)
 ;;(dotimes [_ 100] (bump-player))
@@ -486,11 +495,12 @@
   (block-fill 100 -65 100 -150 -150 :bedrock)
   (block-fill 100 -65 100 -150 150 :bedrock)
 
-  (block-fill 100 -65 100 :water)
+  (block-fill 100 -64 100 :water)
 
   (block-fill 50 -2 50 :water)
   (block-fill 20 -2 20 0 -100 :water))
 
+(defonce growth (atom 0))
 (def instr2 [(b/pen-up)
              (b/up 5)
              (b/left 3)
@@ -499,6 +509,7 @@
              (b/forward (mod @growth 10))])
 (def mat2 [:sand])
 )
+(setup-world)
 
 (set-time :night)
 
@@ -509,11 +520,47 @@
 
 (ctl-global-clock 8.0)
 
+(def trigger-g62421
+  (on-beat-trigger
+   8 (fn [b]
+       (let [beat (int (mod b 16))]
+         (case beat
+           0 (do (paint-line 10 :mob_spawner)
+                 (line-s :rate 1.0 :start 0.4 :end 0.42)
+                 (reverb-kick-s :amp 1.1)
+                 ;;                 (bonus-s :rate 0.2)
+                 )
+
+           (do (paint-line 10 :ice)
+               (line-s :rate 1.0 :start 0.4 :end 0.42)
+               (reverb-kick-s :start 0.09)))))))
+
+(remove-beat-trigger trigger-g62421)
+(remove-all-beat-triggers)
+(remove-all-sample-triggers)
+
+(def trigger-g62422
+  (do
+    (on-beat-trigger 8 (fn [b]
+                         (reverb-kick-s)
+                         (if (= 0.0 (mod b 16))
+                           (word "CLOJURE"  20 (+ (rand-int 10) 25) (choose (concat block-material [ :sand])))
+                           (word "OVERTONE" 20 (+ (rand-int 10) 10)  (choose (concat block-material [ :sand]))))
+                         ;;(word "OVERTONE" 20 :air)
+                         ))))
+(remove-all-sample-triggers)
+(remove-beat-trigger trigger-g62422)
+(remove-all-beat-triggers)
+(set-time :day)
+
+(boom-s)
+(explode 20 20 5)
+
 (def trigger-g77218
-  (on-beat-trigger 16 #(do
-                        (add-step (nth (cycle [:grass :dirt]) (* -1 (:x @stairs))) )
-                        (boom-s)
-)))
+  (on-beat-trigger
+   16 #(do
+         (add-step (nth (cycle [:grass :dirt]) (* -1 (:x @stairs))) )
+         (boom-s))))
 
 (remove-beat-trigger trigger-g77218)
 (remove-all-beat-triggers)
@@ -560,18 +607,21 @@
 (def spir-trigger
   (do
     (reset! (:material spiral-state) :grass)
-    (reset! (:material triangle-state) :ice)
-    (reset-spiral!)
+    (reset-triangle!)
     (sample-trigger
      [0 0 0 0 0 0 0 0
       1 0 0 0 0 0 0 0]
-     (fn []
-       (snare :rate 1.0)
-       (if (> (rand-int 100) 50)
-         (paint-triangle :stone #(swap! (:size triangle-state) inc) (* 2 @(:size spiral-state)))
-         (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state))))))))
+     (fn [b]
+       (let [r  (if (= 0.0 (mod b 32)) 1.0 0.99)]
+         ;;(snare :rate r :amp r)
+         )
+       (paint-triangle :grass #(swap! (:size triangle-state) + 2) (* 2 @(:size spiral-state)))
+       ;;(paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state)))
+       ))))
 
-(reset! (:material spiral-state) :diamond_block)
+
+()
+(reset! (:material triangle-state) :grass)
 (remove-beat-trigger spir-trigger)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
@@ -580,7 +630,7 @@
         32
         (fn []
           (ring-hat :amp 0.2)
-          (circle (inc (mod @growth 20)) (choose [:gravel :sand]))
+          (circle (inc (mod @growth 20)) (choose [:sand]))
 ;;          (draw (choose mat2) instr2)
           )))
 
@@ -589,63 +639,44 @@
 
 (def sub2-trigger
   (on-beat-trigger
-   (* 8)
+   (* 4)
    (fn []
      (highhat :rate 1.0)
 
-     (monster 0 0 0 :pig)
+     (life 2 5 2 :pig)
      (bump-player)
      (block 5 7 0 :dirt)
-     (blocks [[5 5 0]
-              [5 4 0]
-              [5 2 0]] :dirt)
-     (draw :dirt [(b/pen-up) (b/forward 10) (b/pen-down) (b/up 10) (b/left 1) (b/forward 10) (b/left 1) (b/forward 3) (b/left 2)]))))
+     (blocks [[5 5 0 :diamond_block]
+              [5 4 0 :gold_block]
+              [5 2 0 :coal_block]] )
+     (draw :quartz_block [(b/pen-up) (b/forward 10) (b/pen-down) (b/up (rand-int 10)) (b/left (rand-int 10)) (b/forward (rand-int 10))
+                          (b/left 1) (b/forward (rand-int 10)) (b/left (rand-int 2))]))))
 
 (remove-beat-trigger sub2-trigger)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
 
-(def trigger-g62421
-  (on-beat-trigger
-   4 (fn [b]
-       (let [beat (int (mod b 16))]
-         (case beat
-           0 (do (paint-line 10 :mob_spawner)
-                 (line-s :rate 1.0 :start 0.4 :end 0.42)
-                 (reverb-kick-s :amp 1.1)
-                 (bonus-s :rate 0.2))
-
-           (do (paint-line 10 :ice)
-               (line-s :rate 1.0 :start 0.4 :end 0.42)
-               (reverb-kick-s :start 0.09)
-               ))))))
-
-(remove-beat-trigger trigger-g62421)
-(remove-all-beat-triggers)
-(remove-all-sample-triggers)
-
-(def trigger-g62422
-  (do
-    (on-beat-trigger 8 (fn [b]
-                         (reverb-kick-s)
-                         (if (= 0.0 (mod b 16))
-                           (word "CLOJURE"  20 (+ (rand-int 10) 25) (choose (concat block-material [:tnt :sand])))
-                           (word "OVERTONE" 20 (+ (rand-int 10) 10)  (choose (concat block-material [:tnt :sand]))))
-                         ;;(word "OVERTONE" 20 :air)
-
-                         ))))
-
-(remove-beat-trigger trigger-g62422)
-(remove-all-beat-triggers)
-(set-time :day)
-
-(explode 20 20 5)
-
+(dotimes [_ 100] (paint-triangle :grass))
 ;;:mob_spawner onfire pigs
 (def block-material [:ice :snow_block :quartz_block :dimond_block])
 
 (do (big-reverb-kick-s) (set-time :day))
 
-(set-time :day)
+(set-time :night)
 ;;(destroyer-of-worlds)
 ;;mv create clojure normal -g EmptyWorldGenerator
+
+(monster 0 10 0 :pig)
+(block-fill 10 0 10 :grass)
+
+(def trigger-g62425
+  (on-beat-trigger 32 #(do
+                     (w/lightning (.getLocation player))
+                       )))
+
+(remove-beat-trigger trigger-g62425)
+(remove-all-beat-triggers)
+
+
+
+(life 2 5 2 :pig)
