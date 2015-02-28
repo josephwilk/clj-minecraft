@@ -42,17 +42,14 @@
 
   (defn draw [m actions] (bk/ui-sync @cljminecraft.core/clj-plugin #(apply b/run-actions ctx (b/material m) actions)))
 
-  (defn monster [x y z type]
-    (let [start-player-loc (.getLocation player)
-          l (Location. active-world
-                       (.getX start-player-loc)
-                       (.getY start-player-loc)
-                       (.getZ start-player-loc))
-
-          _ (.setX l (+ x (.getX l)))
-          _ (.setY l (+ y (.getX l)))
-          _ (.setZ l (+ z (.getX l)))]
-      (bk/ui-sync @cljminecraft.core/clj-plugin #(e/spawn-entity l type))))
+  (defn life [x y z thing]
+    (bk/ui-sync @cljminecraft.core/clj-plugin
+                #(let [l (.getLocation player)]
+                   (doto l
+                     (.setX (+ x (.getX l)))
+                     (.setY (+ y (.getY l)))
+                     (.setZ (+ z (.getZ l))))
+                   (e/spawn-entity l thing))))
 
 (defn bump-y [y-offset] (.setY (:origin ctx) (+ y-offset (.getY (:origin ctx)))))
 (defn bump-x [x-offset] (.setX (:origin ctx) (+ x-offset (.getX (:origin ctx)))))
