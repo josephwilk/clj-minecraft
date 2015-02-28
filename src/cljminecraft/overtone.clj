@@ -300,16 +300,17 @@
     (letter c x z (* 6 idx) material)))
 
 (defn circle
-  ([size thing] (circle size -1 thing false))
-  ([size y thing] (circle size y thing false))
-  ([size y thing flip]
+  ([size thing]        (circle size -1 -1 thing false))
+  ([size y thing]      (circle size y y thing false))
+  ([size y thing flip] (circle size y y thing flip) )
+  ([size y z thing flip]
      (let [mid (int (/ size 2))
            neg-mid (- 0 mid)
            cords (if flip
-                   (let [top    (map (fn [s] [y (+ y mid) s])     (range neg-mid (- size mid)))
-                         bottom (map (fn [s] [y (+ y neg-mid) s]) (range neg-mid (- size mid)))
-                         left   (map (fn [s] [y (+ y s) mid])    (range neg-mid (- size mid)))
-                         right  (map (fn [s] [y (+ y s) neg-mid]) (range neg-mid (- size mid)))]
+                   (let [top    (map (fn [s] [y (+ z mid) s])     (range neg-mid (- size mid)))
+                         bottom (map (fn [s] [y (+ z neg-mid) s]) (range neg-mid (- size mid)))
+                         left   (map (fn [s] [y (+ z s) mid])    (range neg-mid (- size mid)))
+                         right  (map (fn [s] [y (+ z s) neg-mid]) (range neg-mid (- size mid)))]
                      (distinct (apply concat top bottom left right [])))
                    (let [top    (map (fn [s] [mid y s])     (range neg-mid (- size mid)))
                          bottom (map (fn [s] [neg-mid y s]) (range neg-mid (- size mid)))
@@ -333,6 +334,12 @@
                            [0 0 0]
                            [1 0 1]] 3 material)))
 
+
+(defn star
+  "3d star"
+  ([mat] (star 7 5 mat))
+  ([x y mat]
+     (blocks [[(- x 1) y 0] [(- x 2) (- y 1) 0]  [(- x 1) (- y 1) 0] [x (- y 1) 0] [(- x 1) (- y 1) -1] [(- x 1) (- y 1) 1] [(- x 1) (- y 2) 0]] mat)))
 
 (def spiral-state {:x (atom 0)
                    :y (atom 3)
@@ -513,8 +520,8 @@
 
 (set-time :night)
 
-(bk/broadcast "[:overtone :clojure :minecraft]")
-(bk/broadcast "(do)")
+(bk/broadcast "Run!")
+(bk/broadcast "Now!")
 
 (one-time-beat-trigger 32 64 (fn [& _] (boom-s) (set-time :day)))
 
@@ -522,18 +529,25 @@
 
 (def trigger-g62421
   (on-beat-trigger
-   8 (fn [b]
-       (let [beat (int (mod b 16))]
+   4 (fn [b]
+       (let [beat (int (mod b 32))]
          (case beat
            0 (do (paint-line 10 :mob_spawner)
                  (line-s :rate 1.0 :start 0.4 :end 0.42)
                  (reverb-kick-s :amp 1.1)
-                 ;;                 (bonus-s :rate 0.2)
+                 (bonus-s :rate 0.2)
+                 )
+
+           16 (do (paint-line 10 :ice)
+                  (reverb-kick-s :amp 1.0)
+                 (circle beat 9 -1 :coal_block true)
+                 (circle beat 8 -1 :fire true)
                  )
 
            (do (paint-line 10 :ice)
                (line-s :rate 1.0 :start 0.4 :end 0.42)
-               (reverb-kick-s :start 0.09)))))))
+               (reverb-kick-s :start 0.09)
+               ))))))
 
 (remove-beat-trigger trigger-g62421)
 (remove-all-beat-triggers)
@@ -566,25 +580,8 @@
 (remove-all-beat-triggers)
 
 (def sub-trigger
-  (do (def cell-size (atom 1))
-      (def growth (atom 0))
-      (def material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :diamond_brick :gold_brick :air :stationary_water :water :lava]))
-
-      (def instructions [(b/pen-up)
-                         (b/up 3)
-                         (b/forward 1)
-                         (b/right 4)
-                         (b/pen-down)
-                         (b/back 1)
-                         (comment (b/up 2)
-                                  (b/forward 4)
-                                  (b/down  3)
-                                  (b/left (rand-int 10))
-                                  (b/right (rand-int 10))
-                                  (b/up (rand-int 10))
-                                  (b/right (rand-int 10))
-                                  (b/down (rand-int 10)))
-                         ])
+  (do (defonce growth (atom 0))
+      (defonce material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :diamond_brick :gold_brick :air :stationary_water :water :lava]))
 
       (sample-trigger
        [1 0 0 0 0 0 0 0
@@ -592,15 +589,18 @@
         1 0 1 0 0 0 0 0
         0 0 0 0 0 0 0 0]
        (fn []
-         (def ctx (b/setup-context player))
          (swap! growth inc)
          (if (= (nth material-bag @growth) :water)
            (do       (sample-player subby :rate 0.5 :amp 1.0)
                      (sample-player wop :rate -0.8 :amp 1.0))
            (sample-player subby :rate 0.4)
            )
-         (draw (nth material-bag @growth) instructions)))))
+         (star (nth material-bag @growth))
+         ))))
 
+;;(star 7 5 :gold_block)
+
+(set-time :day)
 (remove-beat-trigger sub-trigger)
 (remove-all-beat-triggers)
 
@@ -613,7 +613,7 @@
       1 0 0 0 0 0 0 0]
      (fn [b]
        (let [r  (if (= 0.0 (mod b 32)) 1.0 0.99)]
-         ;;(snare :rate r :amp r)
+         (snare :rate r :amp r)
          )
        (paint-triangle :grass #(swap! (:size triangle-state) + 2) (* 2 @(:size spiral-state)))
        ;;(paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state)))
