@@ -342,6 +342,59 @@
   ([x y mat]
      (blocks [[(- x 1) y 0] [(- x 2) (- y 1) 0]  [(- x 1) (- y 1) 0] [x (- y 1) 0] [(- x 1) (- y 1) -1] [(- x 1) (- y 1) 1] [(- x 1) (- y 2) 0]] mat)))
 
+(def swirl-state {:x (atom 0) :y (atom 3) :z (atom 0) :size (atom 4) :dir (atom :forward) :material (atom :gold_block)})
+
+(defn reset-swirl! []
+  (reset! (swirl-state :x) 0)
+  (reset! (swirl-state :y) 3)
+  (reset! (swirl-state :z) 0)
+  ;;(reset! (swirl-state :size) 4)
+  (reset! (swirl-state :dir) :forward))
+
+(defn swirl-cords
+  ([material its]
+     (loop [cords []]
+       (if (>= (count cords) its)
+         cords
+
+         (let [{ x :x y :y z :z dir :dir size :size mat :material} swirl-state
+               m @(:size swirl-state)
+               offset (int (/ @(:size swirl-state) 2))]
+           (when (and (= @x 0) (= 0 @z) (= @dir :forward)) (reset! dir :forward))
+           (when (and (= @x m) (= 0 @z)) (reset! dir :right))
+           (when (and (= @x m) (= m @z)) (reset! dir :back))
+           (when (and (= @x 0) (= m @z)) (reset! dir :left))
+
+           (when (and (= @x 0) (= 0 @z) (not= @dir :forward))
+             (reset! dir :forward))
+
+           (swap! y + 2)
+
+           (when (>= @y 150)
+             (reset-swirl!)
+             (reset! (swirl-state :material) (choose block-material))
+             (swap! size + 2)
+             (println swirl-state)
+             )
+           (when (>= @size 30)
+             (reset! size 4))
+
+           (case @dir
+             :forward (swap! x inc)
+             :back    (swap! x dec)
+             :left    (swap! z dec)
+             :right   (swap! z inc))
+           (recur (concat cords [[(- @x offset) @y (- @z offset) @mat]])))))))
+
+(reset-swirl!)
+(defn paint-swirl
+  ([mat] (paint-swirl mat 1))
+  ([mat its]
+     (let [cords (swirl-cords mat its)]
+       (blocks cords)
+       cords)))
+(reset! (:size swirl-state) 3)
+
 (def spiral-state {:x (atom 0)
                    :y (atom 3)
                    :z (atom 0)
@@ -644,6 +697,8 @@
        (let [r (if (= 0.0 (mod b 32)) 1.0 0.99)
              start (if (= 0.0 (mod b 32)) 0.0 0.1)]
          (snare :rate r :amp r :start state))
+       ;;(paint-swirl :stone 150)
+
        (paint-triangle :grass #(swap! (:size triangle-state) + 2) (* 2 @(:size spiral-state)))
        (when (> 80 (rand-int 100))
          (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state))))
@@ -676,9 +731,8 @@
      (block 5 7 0 :dirt)
      (blocks [[5 5 0 :diamond_block]
               [5 4 0 :gold_block]
-              [5 2 0 :coal_block]] )
-     (draw :quartz_block [(b/pen-up) (b/forward 10) (b/pen-down) (b/up (rand-int 10)) (b/left (rand-int 10)) (b/forward (rand-int 10))
-                          (b/left 1) (b/forward (rand-int 10)) (b/left (rand-int 2))]))))
+              [5 2 0 :coal_block]])
+)))
 
 (remove-beat-trigger sub2-trigger)
 (remove-all-beat-triggers)
