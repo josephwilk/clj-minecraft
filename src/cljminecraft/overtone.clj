@@ -562,8 +562,23 @@
              (do (paint-line 10 :ice)
                  (line-s :rate 1.0 :start 0.4 :end 0.42)
                  (reverb-kick-s :start 0.09)
-                 )))))))
+                 ))
 
+           (when-not simple
+             (blocks [
+                      [12 -1 -3 :snow_block] [12 -1 3 :snow_block]
+                      [12 0 -3 :torch] [12 0 3 :torch]
+
+                      [9 -1 -3 :stone] [9 -1 3 :stone]
+
+                      [6 -1 -3 :coal_block] [6 -1 3 :coal_block]
+                      [6 0 -3 :torch] [6 0 3 :torch]
+
+                      [3 -1 -3 :snow_block] [3 -1 3 :snow_block]
+                      [3 0 -3 :torch] [3 0 3 :torch]
+                      ])
+             (life 9 0 -3 :skeleton)
+             (life 9 0 3 :skeleton)))))))
 (remove-beat-trigger trigger-g62421)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
