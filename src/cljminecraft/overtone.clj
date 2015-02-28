@@ -284,15 +284,22 @@
     (letter c x z (* 6 idx) material)))
 
 (defn circle
-  ([size thing] (circle size -1 thing))
-  ([size y thing]
+  ([size thing] (circle size -1 thing false))
+  ([size y thing] (circle size y thing false))
+  ([size y thing flip]
      (let [mid (int (/ size 2))
            neg-mid (- 0 mid)
-           top    (map (fn [s] [mid  y  s])    (range neg-mid (- size mid)))
-           bottom (map (fn [s] [neg-mid y  s]) (range neg-mid (- size mid)))
-           left   (map (fn [s] [s  y  mid])    (range neg-mid (- size mid)))
-           right  (map (fn [s] [s  y neg-mid]) (range neg-mid (- size mid)))
-           cords (distinct (apply concat top bottom left right []))]
+           cords (if flip
+                   (let [top    (map (fn [s] [y (+ y mid) s])     (range neg-mid (- size mid)))
+                         bottom (map (fn [s] [y (+ y neg-mid) s]) (range neg-mid (- size mid)))
+                         left   (map (fn [s] [y (+ y s) mid])    (range neg-mid (- size mid)))
+                         right  (map (fn [s] [y (+ y s) neg-mid]) (range neg-mid (- size mid)))]
+                     (distinct (apply concat top bottom left right [])))
+                   (let [top    (map (fn [s] [mid y s])     (range neg-mid (- size mid)))
+                         bottom (map (fn [s] [neg-mid y s]) (range neg-mid (- size mid)))
+                         left   (map (fn [s] [s y mid])    (range neg-mid (- size mid)))
+                         right  (map (fn [s] [s y neg-mid]) (range neg-mid (- size mid)))]
+                     (distinct (apply concat top bottom left right []))))]
        (blocks cords thing)
        cords)))
 
