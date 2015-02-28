@@ -117,6 +117,24 @@
               (.setType (.getItemType m))
               (.setData (.getData m)))))))))
 
+(defn fixed-blocks "fixed at init player location"
+  ([actions material] (blocks (map #(if (= 3 (count %1)) (concat %1 [material])) actions)))
+  ([actions]
+     (bk/ui-sync
+      @cljminecraft.core/clj-plugin
+      (fn []
+        (doseq [[x y z m] actions]
+          (let [m (i/get-material m)
+                l (Location. active-world (.getX start-player-loc) (.getY start-player-loc) (.getZ start-player-loc) )]
+            (doto l
+              (.setX (+ x (.getX l)))
+              (.setY (+ y (.getY l)))
+              (.setZ (+ z (.getZ l))))
+            (doto (.getBlock l)
+              (.setData 0)
+              (.setType (.getItemType m))
+              (.setData (.getData m)))))))))
+
 (defn block "relative to player" [x y z material & [fixed]]
   (let [l (if fixed
             (Location. active-world
