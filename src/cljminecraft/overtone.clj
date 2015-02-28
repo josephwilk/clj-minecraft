@@ -539,20 +539,25 @@
     (on-beat-trigger
      4 (fn [b]
          (swap! walk-count inc)
-         (let [beat (int (mod b 32))
-               size (nth (cycle (filter odd? (range 5 20))) @walk-count)]
+         (let [simple false
+               beat (int (mod b 32))
+               start (if (= 0.0 beat) 0.0 0.1)
+               ]
            (case beat
              0 (do (paint-line 10 :mob_spawner)
                    (line-s :rate 1.0 :start 0.4 :end 0.42)
-                   (reverb-kick-s :amp 1.1)
+                   (reverb-kick-s :amp 1.1 :start start)
                    (bonus-s :rate 0.2)
                    )
 
-             16 (do (paint-line 10 :ice)
-                    (reverb-kick-s :amp 1.0)
+             16 (let [size (nth (cycle (filter odd? (range 7 15))) @walk-count)]
+                  (paint-line 10 :ice)
+                  (reverb-kick-s :amp 1.0 :start start)
+                  (when-not simple
                     (circle beat size  -1 :coal_block true)
-                    (circle beat (dec size) -1 :fire true)
-                    )
+                    (circle beat (dec size) -1 :fire true))
+                  )
+
 
              (do (paint-line 10 :ice)
                  (line-s :rate 1.0 :start 0.4 :end 0.42)
