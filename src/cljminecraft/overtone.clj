@@ -11,6 +11,22 @@
 ;;(connect-external-server)
 
 (do
+  (defonce big-reverb-kick-s (freesound 219515))
+  (defonce reverb-kick-s (freesound 90243))
+
+  (defonce line-s (freesound 144919))
+  (defonce bonus-s (freesound 55570))
+
+  (defonce highhat (freesound 53532))
+  (defonce dirty-kick (freesound 30669))
+  (defonce ring-hat (freesound 12912))
+  (defonce snare (freesound 193023))
+  (defonce click (freesound 406))
+  (defonce wop (freesound 85291))
+  (defonce subby (freesound 25649))
+  (defonce boom-s      (freesound-sample 33637)))
+
+(do
   (def block-material
     (->>
      (keys i/materials)
@@ -18,23 +34,6 @@
      (remove #(some #{%1} [:cake_block :iron_door_block :sugar_cane_block :bed_block])))
     )
   (def ore-material (filter #(re-find #"_ore" (str (name %1))) (keys i/materials)))
-
-  (do
-    (def big-reverb-kick-s (freesound 219515))
-    (def reverb-kick-s (freesound 90243))
-
-    (def line-s (freesound 144919))
-    (def bonus-s (freesound 55570))
-
-    (def highhat (freesound 53532))
-    (def dirty-kick (freesound 30669))
-    (def ring-hat (freesound 12912))
-    (def snare (freesound 193023);;(freesound 26903)
-      )
-    (def click (freesound 406))
-    (def wop (freesound 85291))
-    (def subby (freesound 25649))
-    (defonce boom-s      (freesound-sample 33637)))
 
   (def player (first (.getOnlinePlayers (bk/server))))
   (def active-world (last (bk/worlds)))
