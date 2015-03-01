@@ -2,7 +2,8 @@
   "Music and Minecraft."
   (:import [org.bukkit Location Material])
   (:use [overtone.core] [mud.core] [mud.timing])
-  (:require [cljminecraft.bukkit :as bk]
+  (:require [overtone.inst.synth :as synth]
+   [cljminecraft.bukkit :as bk]
             [cljminecraft.blocks :as b]
             [cljminecraft.world :as w]
             [cljminecraft.entity :as e]
@@ -24,9 +25,27 @@
   (defonce ring-hat (freesound 12912))
   (defonce snare (freesound 193023))
   (defonce click (freesound 406))
-  (defonce wop (freesound 85291))
+  (defonce wop   (freesound 85291))
   (defonce subby (freesound 25649))
-  (defonce boom-s      (freesound-sample 33637)))
+  (defonce boom-s (freesound-sample 33637))
+
+  (do
+    (def overpad-note (cycle (degrees [1 1 1 1 1 1 1 1
+                                       1 1 1 1 3 3 3 3
+                                       1 1 1 1 3 3 3 3]
+                                      :major :C1)))
+    (def overpad-note-inc (atom 0))
+    (def trigger-g62427
+      (on-beat-trigger
+       8
+       (fn [b]
+         (synth/overpad (nth overpad-note @overpad-note-inc)
+                        1.0 0.001 4)
+         (swap! overpad-note-inc inc))))
+
+    (remove-beat-trigger trigger-g62427)
+    (remove-all-beat-triggers)
+    (kill synth/pad)))
 
 (do
   (def block-material
@@ -372,13 +391,12 @@
 
            (swap! y + 2)
 
-           (when (>= @y 150)
+           (when (>= @y 130)
              (reset-swirl!)
              (reset! (swirl-state :material) (choose block-material))
              (swap! size + 2)
-             (println swirl-state)
              )
-           (when (>= @size 30)
+           (when (>= @size 25)
              (reset! size 4))
 
            (case @dir
@@ -607,11 +625,11 @@
              16 (let [size (nth (cycle (filter odd? (range 7 15))) @walk-count)]
                   (paint-line 10 :ice)
                   (reverb-kick-s :amp 1.0 :start start)
+                  (reverb-kick-s :amp 1.0 :rate -1)
                   (when-not simple
                     (circle beat size  -1 :coal_block true)
                     (circle beat (dec size) -1 :fire true))
                   )
-
 
              (do (paint-line 10 :ice)
                  (line-s :rate 1.0 :start 0.4 :end 0.42)
@@ -668,9 +686,11 @@
 (remove-all-beat-triggers)
 (ctl-global-clock 8.0)
 
+(def syncer (promise))
+
 (def sub-trigger
   (do (defonce growth (atom 0))
-      (defonce material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :diamond_brick :gold_brick :air :stationary_water :water :lava]))
+      (defonce material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :diamond_brick :gold_brick :air :coal_block :fire]))
 
       (sample-trigger
        [1 0 0 0 0 0 0 0
@@ -693,6 +713,7 @@
 (set-time :day)
 (remove-beat-trigger sub-trigger)
 (remove-all-beat-triggers)
+(remove-all-sample-triggers)
 
 (def spir-trigger
   (do
@@ -715,7 +736,6 @@
          )
        ))))
 
-(reset! (:material triangle-state) :grass)
 (remove-beat-trigger spir-trigger)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
@@ -737,7 +757,7 @@
   (on-beat-trigger
    (* 8)
    (fn [b]
-     (let [s (if (= 0.0 (mod b 16)) 0.0 0.05 )]
+     (let [s (if (= 0.0 (mod b 16)) 0.0 0.1)]
        (highhat :rate 1.0 :start s))
 
      ;;     (life 2 5 2 :pig)
@@ -757,15 +777,14 @@
 
 (set-time :night)
 ;;(destroyer-of-worlds)
-;;mv create clojure normal -g EmptyWorldGenerator
 
 (monster 0 10 0 :pig)
 (block-fill 10 0 10 :grass)
 (stop-all)
-(def trigger-g62425  (on-beat-trigger 32 #(w/lightning (.getLocation player))))
+(def trigger-g62425  (on-beat-trigger 32 #(do
+                                            (storm true)
+                                            (light-s)
+                                            (w/lightning (.getLocation player)))))
+(storm false)
 
-(remove-beat-trigger trigger-g62425)
-(remove-all-beat-triggers)
-
-
-(life 2 5 2 :pig)
+;;mv create clojure normal -g EmptyWorldGenerator
