@@ -14,6 +14,8 @@
   (defonce big-reverb-kick-s (freesound 219515))
   (defonce reverb-kick-s (freesound 90243))
 
+  (defonce light-s (freesound 169678))
+
   (defonce line-s (freesound 144919))
   (defonce bonus-s (freesound 55570))
 
@@ -575,16 +577,15 @@
 
 (set-time :night)
 
-(bk/broadcast "Run!")
-(bk/broadcast "Now!")
+(dotimes [_ 10] (bk/broadcast "!:&*&@£$$@£$(*:&*£££££££@:£"))
+(bk/broadcast "RUN")
 
 (def trigger-g62426 (on-beat-trigger 64 #(do (set-time (rand-int 1000000)))))
 (remove-beat-trigger trigger-g62426)
 (remove-all-beat-triggers)
+(remove-all-sample-triggers)
 
 (one-time-beat-trigger 16 32 (fn [& _] (boom-s) (set-time :day)))
-
-(ctl-global-clock 8.0)
 
 (def trigger-g62421
   (do
@@ -594,7 +595,7 @@
          (swap! walk-count inc)
          (let [simple false
                beat (int (mod b 32))
-               start (if (= 0.0 beat) 0.0 0.1)
+               start (if (= 0.0 beat) 0.0 0.09)
                ]
            (case beat
              0 (do (paint-line 10 :mob_spawner)
@@ -632,6 +633,8 @@
                       ])
              (life 9 0 -3 :skeleton)
              (life 9 0 3 :skeleton)))))))
+
+(set-time :night)
 (remove-beat-trigger trigger-g62421)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
@@ -661,6 +664,10 @@
 (remove-beat-trigger trigger-g77218)
 (remove-all-beat-triggers)
 
+(remove-all-sample-triggers)
+(remove-all-beat-triggers)
+(ctl-global-clock 8.0)
+
 (def sub-trigger
   (do (defonce growth (atom 0))
       (defonce material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :diamond_brick :gold_brick :air :stationary_water :water :lava]))
@@ -670,14 +677,15 @@
         0 0 0 0 0 0 0 0
         1 0 1 0 0 0 0 0
         0 0 0 0 0 0 0 0]
-       (fn []
+       (fn [b]
+         (let [r (if (= 0.0 (mod b 32)) 0.5 0.4)]
+           (if (= (nth material-bag @growth) :fire)
+             (do (sample-player subby :rate 0.5 :amp 1.0)
+                 (sample-player wop :rate -0.8 :amp 1.0))
+             (sample-player subby :rate r)
+             ))
          (swap! growth inc)
-         (if (= (nth material-bag @growth) :water)
-           (do       (sample-player subby :rate 0.5 :amp 1.0)
-                     (sample-player wop :rate -0.8 :amp 1.0))
-           (sample-player subby :rate 0.4)
-           )
-         (star (nth material-bag @growth))
+     ;;    (star (nth material-bag @growth))
          ))))
 
 ;;(star 7 5 :gold_block)
@@ -694,14 +702,17 @@
      [0 0 0 0 0 0 0 0
       1 0 0 0 0 0 0 0]
      (fn [b]
-       (let [r (if (= 0.0 (mod b 32)) 1.0 0.99)
-             start (if (= 0.0 (mod b 32)) 0.0 0.1)]
-         (snare :rate r :amp r :start state))
-       ;;(paint-swirl :stone 150)
+       (let [beat   (= 0.0 (- (mod b 64) 8))
+             r     (if beat 1.01 0.99)
+             start (if beat 0.0 (ranged-rand 0.02 0.05))
+             a     (if beat 1.0 0.99)]
+         (snare :rate r :amp a :start start))
+;;       (paint-swirl :stone 100)
 
-       (paint-triangle :grass #(swap! (:size triangle-state) + 2) (* 2 @(:size spiral-state)))
-       (when (> 80 (rand-int 100))
-         (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state))))
+       ;;(paint-triangle :grass #(swap! (:size triangle-state) + 2) (* 2 @(:size spiral-state)))
+       (when (> 75 (rand-int 100))
+        ;; (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state)))
+         )
        ))))
 
 (reset! (:material triangle-state) :grass)
@@ -709,29 +720,29 @@
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
 
-(def ring-trigger (on-beat-trigger
-        32
-        (fn []
-          (ring-hat :amp 0.2)
-          (circle (inc (mod @growth 20)) (choose [:sand]))
-;;          (draw (choose mat2) instr2)
-          )))
+(def ring-trigger
+  (on-beat-trigger
+   32
+   (fn [b]
+     (let [r (if (= 0.0 (mod b 128)) 0.9 1.0)]
+       (ring-hat :amp 0.2 :rate r))
+     (circle (inc (mod @growth 20)) (choose [:sand]))
+     ;;(draw (choose mat2) instr2)
+     )))
 
 (remove-beat-trigger ring-trigger)
 (remove-all-sample-triggers)
 
 (def sub2-trigger
   (on-beat-trigger
-   (* 4)
-   (fn []
-     (highhat :rate 1.0)
+   (* 8)
+   (fn [b]
+     (let [s (if (= 0.0 (mod b 16)) 0.0 0.05 )]
+       (highhat :rate 1.0 :start s))
 
-      (life 2 5 2 :pig)
+     ;;     (life 2 5 2 :pig)
      (bump-player)
-     (block 5 7 0 :dirt)
-     (blocks [[5 5 0 :diamond_block]
-              [5 4 0 :gold_block]
-              [5 2 0 :coal_block]])
+     (blocks [[5 5 0 :diamond_block][5 4 0 :gold_block][5 2 0 :coal_block]])
 )))
 
 (remove-beat-trigger sub2-trigger)
