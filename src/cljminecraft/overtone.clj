@@ -584,9 +584,10 @@
                       1.0 0.001 4)
        (swap! overpad-note-inc inc))))
 
-  (remove-beat-trigger trigger-g62427)
-  (remove-all-beat-triggers)
-  (kill synth/pad))
+  ;;(remove-beat-trigger trigger-g62427)
+  ;;(remove-all-beat-triggers)
+ ;; (kill synth/pad)
+ )
 
 (set-time :night)
 
