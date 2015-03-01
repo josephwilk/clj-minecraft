@@ -1,15 +1,9 @@
 (ns cljminecraft.overtone
-  "Music and Minecraft."
-  (:import [org.bukkit Location Material])
-  (:use [overtone.core] [mud.core] [mud.timing])
-  (:require [overtone.inst.synth :as synth]
-   [cljminecraft.bukkit :as bk]
-            [cljminecraft.blocks :as b]
-            [cljminecraft.world :as w]
-            [cljminecraft.entity :as e]
-            [cljminecraft.items :as i]))
-
-;;(connect-external-server)
+  "Music and Minecraft.
+       d[-_-]b
+         /█\\
+         .Π.
+" (:import [org.bukkit Location Material]) (:use [overtone.core] [mud.core] [mud.timing]) (:require [overtone.inst.synth :as synth] [cljminecraft.bukkit :as bk] [cljminecraft.blocks :as b] [cljminecraft.world :as w] [cljminecraft.entity :as e] [cljminecraft.items :as i]))
 
 (do
   (defonce big-reverb-kick-s (freesound 219515))
@@ -781,6 +775,6 @@
                                             (storm true)
                                             (light-s)
                                             (w/lightning (.getLocation player)))))
-(storm true)
+(storm false)
 
 ;;mv create clojure normal -g EmptyWorldGenerator
