@@ -28,24 +28,7 @@
   (defonce wop   (freesound 85291))
   (defonce subby (freesound 25649))
   (defonce boom-s (freesound-sample 33637))
-
-  (do
-    (def overpad-note (cycle (degrees [1 1 1 1 1 1 1 1
-                                       1 1 1 1 3 3 3 3
-                                       1 1 1 1 3 3 3 3]
-                                      :major :C1)))
-    (def overpad-note-inc (atom 0))
-    (def trigger-g62427
-      (on-beat-trigger
-       8
-       (fn [b]
-         (synth/overpad (nth overpad-note @overpad-note-inc)
-                        1.0 0.001 4)
-         (swap! overpad-note-inc inc))))
-
-    (remove-beat-trigger trigger-g62427)
-    (remove-all-beat-triggers)
-    (kill synth/pad)))
+)
 
 (do
   (def block-material
@@ -593,6 +576,24 @@
 
 ;;START
 
+(do
+  (def overpad-note (cycle (degrees [1 1 1 1 1 1 1 1
+                                     1 1 1 1 3 3 3 3
+                                     1 1 1 1 3 3 3 3]
+                                    :major :C1)))
+  (def overpad-note-inc (atom 0))
+  (def trigger-g62427
+    (on-beat-trigger
+     8
+     (fn [b]
+       (synth/overpad (nth overpad-note @overpad-note-inc)
+                      1.0 0.001 4)
+       (swap! overpad-note-inc inc))))
+
+  (remove-beat-trigger trigger-g62427)
+  (remove-all-beat-triggers)
+  (kill synth/pad))
+
 (set-time :night)
 
 (dotimes [_ 10] (bk/broadcast "!:&*&@£$$@£$(*:&*£££££££@:£"))
@@ -686,8 +687,6 @@
 (remove-all-beat-triggers)
 (ctl-global-clock 8.0)
 
-(def syncer (promise))
-
 (def sub-trigger
   (do (defonce growth (atom 0))
       (defonce material-bag (cycle [:sand :stone :grass :brick :wood :dirt :wool :pumpkin :diamond_brick :gold_brick :air :coal_block :fire]))
@@ -705,12 +704,9 @@
              (sample-player subby :rate r)
              ))
          (swap! growth inc)
-     ;;    (star (nth material-bag @growth))
+         (star (nth material-bag @growth))
          ))))
 
-;;(star 7 5 :gold_block)
-
-(set-time :day)
 (remove-beat-trigger sub-trigger)
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
@@ -728,11 +724,11 @@
              start (if beat 0.0 (ranged-rand 0.02 0.05))
              a     (if beat 1.0 0.99)]
          (snare :rate r :amp a :start start))
-;;       (paint-swirl :stone 100)
+       ;;(paint-swirl :stone 100)
 
-       ;;(paint-triangle :grass #(swap! (:size triangle-state) + 2) (* 2 @(:size spiral-state)))
+       (paint-triangle :grass #(swap! (:size triangle-state) + 2) (* 2 @(:size spiral-state)))
        (when (> 75 (rand-int 100))
-        ;; (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state)))
+         (paint-spiral  :stone #(swap! (:size spiral-state) inc)  (* 2 @(:size spiral-state)))
          )
        ))))
 
@@ -755,14 +751,14 @@
 
 (def sub2-trigger
   (on-beat-trigger
-   (* 8)
+   (* 8 2)
    (fn [b]
      (let [s (if (= 0.0 (mod b 16)) 0.0 0.1)]
        (highhat :rate 1.0 :start s))
 
-     ;;     (life 2 5 2 :pig)
+     ;;(life 2 5 2 :pig)
      (bump-player)
-     (blocks [[5 5 0 :diamond_block][5 4 0 :gold_block][5 2 0 :coal_block]])
+     ;;(blocks [[5 5 0 :diamond_block][5 4 0 :gold_block][5 2 0 :coal_block]])
 )))
 
 (remove-beat-trigger sub2-trigger)
@@ -785,6 +781,6 @@
                                             (storm true)
                                             (light-s)
                                             (w/lightning (.getLocation player)))))
-(storm false)
+(storm true)
 
 ;;mv create clojure normal -g EmptyWorldGenerator
