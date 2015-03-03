@@ -3,25 +3,27 @@
        d[-_-]b
          /█\\
          .Π.
-" (:import [org.bukkit Location Material]) (:use [overtone.core] [mud.core] [mud.timing]) (:require [overtone.inst.synth :as synth] [cljminecraft.bukkit :as bk] [cljminecraft.blocks :as b] [cljminecraft.world :as w] [cljminecraft.entity :as e] [cljminecraft.items :as i]))
+" (:import [org.bukkit Location Material Block]) [cljminecraft.bukkit :as bk] [cljminecraft.blocks :as b] [cljminecraft.world :as w] [cljminecraft.entity :as e] [cljminecraft.items :as i])
+
+(set! *warn-on-reflection* true)
 
 (do
   (defonce big-reverb-kick-s (freesound 219515))
-  (defonce reverb-kick-s (freesound 90243))
+  (defonce reverb-kick-s     (freesound 90243))
 
   (defonce light-s (freesound 169678))
 
-  (defonce line-s (freesound 144919))
+  (defonce line-s  (freesound 144919))
   (defonce bonus-s (freesound 55570))
 
-  (defonce highhat (freesound 53532))
+  (defonce highhat    (freesound 53532))
   (defonce dirty-kick (freesound 30669))
-  (defonce ring-hat (freesound 12912))
-  (defonce snare (freesound 193023))
-  (defonce click (freesound 406))
-  (defonce wop   (freesound 85291))
-  (defonce subby (freesound 25649))
-  (defonce boom-s (freesound-sample 33637))
+  (defonce ring-hat   (freesound 12912))
+  (defonce snare      (freesound 193023))
+  (defonce click      (freesound 406))
+  (defonce wop        (freesound 85291))
+  (defonce subby      (freesound 25649))
+  (defonce boom-s     (freesound-sample 33637))
 )
 
 (do
@@ -56,17 +58,15 @@
 (defn bump-z [z-offset] (.setZ (:origin ctx) (+ z-offset (.getZ (:origin ctx)))))
 
 (defn teleport [x y z]
-  (let [l (.getLocation player) ]
+  (let [l ^Location (.getLocation player) ]
     (doto l
       (.setX (+ x (.getX l)))
       (.setY (+ y (.getY l)))
       (.setZ (+ z (.getZ l))))
     (.teleport player l)))
 
-
-
 (defn explode [x y z]
-  (let [l (.getLocation player)]
+  (let [l ^Location (.getLocation player)]
     (doto l
       (.setX (+ x (.getX l)))
       (.setY (+ y (.getY l)))
@@ -78,10 +78,10 @@
 ;;(explode 0 -0 0)
 
 (defn blocks-around-player [size mat]
-  (let [l (.getLocation player)
+  (let [l ^Location (.getLocation player)
         grid (range (- 0 size) size)]
     (map
-     #(let [b-l (.getLocation %1)]
+     #(let [b-l ^Location (.getLocation %1)]
         [(.getX b-l) (.getY b-l) (.getZ b-l) mat])
      (filter
       #(not= Material/AIR (.getType %1))
@@ -94,10 +94,8 @@
                     (Location. active-world
                                (+ x (.getX l))
                                (+ y (.getY l))
-                               (+ z (.getZ l))))
-                   )
-                 grid)
-)
+                               (+ z (.getZ l)))))
+                 grid))
           (range -10 10)))
        (range -10 10))))))
 
@@ -108,13 +106,13 @@
       @cljminecraft.core/clj-plugin
       (fn []
         (doseq [[x y z m] actions]
-          (let [m (i/get-material m)
-                l (.getLocation player)]
+          (let [m ^Material (i/get-material m)
+                l ^Location (.getLocation player)]
             (doto l
               (.setX (+ x (.getX l)))
               (.setY (+ y (.getY l)))
               (.setZ (+ z (.getZ l))))
-            (doto (.getBlock l)
+            (doto ^Block (.getBlock l)
               (.setData 0)
               (.setType (.getItemType m))
               (.setData (.getData m)))))))))
@@ -126,13 +124,13 @@
       @cljminecraft.core/clj-plugin
       (fn []
         (doseq [[x y z m] actions]
-          (let [m (i/get-material m)
-                l (Location. active-world (.getX start-player-loc) (.getY start-player-loc) (.getZ start-player-loc) )]
+          (let [m ^Material (i/get-material m)
+                l ^Location (Location. active-world (.getX start-player-loc) (.getY start-player-loc) (.getZ start-player-loc) )]
             (doto l
               (.setX (+ x (.getX l)))
               (.setY (+ y (.getY l)))
               (.setZ (+ z (.getZ l))))
-            (doto (.getBlock l)
+            (doto ^Block (.getBlock l)
               (.setData 0)
               (.setType (.getItemType m))
               (.setData (.getData m)))))))))
@@ -144,7 +142,7 @@
                        (.getY start-player-loc)
                        (.getZ start-player-loc))
             (.getLocation player))
-        m (i/get-material material)]
+        m ^Material (i/get-material material)]
     (doto l
       (.setX (+ x (.getX l)))
       (.setY (+ y (.getY l)))
@@ -152,16 +150,16 @@
     (bk/ui-sync
      @cljminecraft.core/clj-plugin
      (fn []
-       (doto (.getBlock l)
+       (doto ^Block (.getBlock l)
          (.setData 0)
          (.setType (.getItemType m))
          (.setData (.getData m)))))))
 
 (defn block-fill
-  ([x y z mat] (block-fill x y z 0 0 mat))
+  ([x y z mat]        (block-fill x y z 0 0 mat))
   ([x y z offset mat] (block-fill x y z offset 0 mat))
   ([x y z x-offset z-offset mat]
-      (blocks  (mapcat (fn [i] (map (fn [x] [(+ x-offset i) y (+ z-offset x) mat]) (range (- 0 x) x))) (range (- 0 z) z)))))
+      (blocks (mapcat (fn [i] (map (fn [x] [(+ x-offset i) y (+ z-offset x) mat]) (range (- 0 x) x))) (range (- 0 z) z)))))
 
 (defn blocks-absolute "absolute"
   ([actions material] (blocks (map #(if (= 3 (count %1)) (concat %1 [material])) actions)))
@@ -170,9 +168,9 @@
       @cljminecraft.core/clj-plugin
       (fn []
         (doseq [[x y z m] actions]
-          (let [m (i/get-material m)
-                l (Location. active-world x y z)]
-            (doto (.getBlock l)
+          (let [m ^Material (i/get-material m)
+                l ^Location (Location. active-world x y z)]
+            (doto ^Block (.getBlock l)
               (.setData 0)
               (.setType (.getItemType m))
               (.setData (.getData m)))))))))
@@ -183,8 +181,7 @@
   ;;  (teleport 0 200 0)
   )
 
-(defn paint-line [steps mat]
-  (blocks (map (fn [xy] [xy -1 0 mat]) (range steps))))
+(defn paint-line [steps mat] (blocks (map (fn [xy] [xy -1 0 mat]) (range steps))))
 
 (def stairs (atom {:x -1 :y -1 :z 2}))
 
@@ -371,8 +368,7 @@
            (when (>= @y 130)
              (reset-swirl!)
              (reset! (swirl-state :material) (choose block-material))
-             (swap! size + 2)
-             )
+             (swap! size + 2))
            (when (>= @size 25)
              (reset! size 4))
 
@@ -384,13 +380,14 @@
            (recur (concat cords [[(- @x offset) @y (- @z offset) @mat]])))))))
 
 (reset-swirl!)
+(reset! (:size swirl-state) 3)
+
 (defn paint-swirl
   ([mat] (paint-swirl mat 1))
   ([mat its]
      (let [cords (swirl-cords mat its)]
        (blocks cords)
        cords)))
-(reset! (:size swirl-state) 3)
 
 (def spiral-state {:x (atom 0)
                    :y (atom 3)
@@ -402,7 +399,7 @@
 (reset! (:material spiral-state) :diamond_block)
 
 (defn reset-spiral! []
-  (def start-player-loc  (.getLocation player))
+  (def start-player-loc (.getLocation player))
   (reset! (:x spiral-state) 0)
   (reset! (:z spiral-state) 0)
   (reset! (:y spiral-state) 3)
