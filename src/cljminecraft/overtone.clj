@@ -3,7 +3,7 @@
        d[-_-]b
          /█\\
          .Π.
-" (:import [org.bukkit Location Material Block]) [cljminecraft.bukkit :as bk] [cljminecraft.blocks :as b] [cljminecraft.world :as w] [cljminecraft.entity :as e] [cljminecraft.items :as i])
+" (:import [org.bukkit Location Material Block]) (:use [overtone.core] [mud.core] [mud.timing]) (:require [cljminecraft.bukkit :as bk]) [cljminecraft.blocks :as b] [cljminecraft.world :as w] [cljminecraft.entity :as e] [cljminecraft.items :as i])
 
 (set! *warn-on-reflection* true)
 
