@@ -31,8 +31,7 @@
     (->>
      (keys i/materials)
      (filter #(re-find #"^[\w]*_block$" (str (name %1))))
-     (remove #(some #{%1} [:cake_block :iron_door_block :sugar_cane_block :bed_block])))
-    )
+     (remove #(some #{%1} [:cake_block :iron_door_block :sugar_cane_block :bed_block]))))
   (def ore-material (filter #(re-find #"_ore" (str (name %1))) (keys i/materials)))
 
   (def player (first (.getOnlinePlayers (bk/server))))
@@ -46,7 +45,7 @@
 
   (defn life [x y z thing]
     (bk/ui-sync @cljminecraft.core/clj-plugin
-                #(let [l (.getLocation player)]
+                #(let [l ^Location (.getLocation player)]
                    (doto l
                      (.setX (+ x (.getX l)))
                      (.setY (+ y (.getY l)))
@@ -74,8 +73,6 @@
     (bk/ui-sync
      @cljminecraft.core/clj-plugin
      #(w/explode l 10 true))))
-
-;;(explode 0 -0 0)
 
 (defn blocks-around-player [size mat]
   (let [l ^Location (.getLocation player)
@@ -136,12 +133,12 @@
               (.setData (.getData m)))))))))
 
 (defn block "relative to player" [x y z material & [fixed]]
-  (let [l (if fixed
-            (Location. active-world
-                       (.getX start-player-loc)
-                       (.getY start-player-loc)
-                       (.getZ start-player-loc))
-            (.getLocation player))
+  (let [l ^Location (if fixed
+                      (Location. active-world
+                                 (.getX start-player-loc)
+                                 (.getY start-player-loc)
+                                 (.getZ start-player-loc))
+                      (.getLocation player))
         m ^Material (i/get-material material)]
     (doto l
       (.setX (+ x (.getX l)))
@@ -297,27 +294,27 @@
     (letter c x z (* 6 idx) material)))
 
 (defn circle
-  ([size thing]        (circle size -1 -1 thing false))
-  ([size y thing]      (circle size y y thing false))
-  ([size y thing flip] (circle size y y thing flip) )
-  ([size y z thing flip]
+  ([size thing]               (circle size -1 -1 thing :flat))
+  ([size y thing]             (circle size y y thing :flat))
+  ([size y thing orientation] (circle size y y thing orientation) )
+  ([size y z thing orientation]
      (let [mid (int (/ size 2))
            neg-mid (- 0 mid)
-           cords (if flip
-                   (let [top    (map (fn [s] [y (+ z mid) s])     (range neg-mid (- size mid)))
-                         bottom (map (fn [s] [y (+ z neg-mid) s]) (range neg-mid (- size mid)))
-                         left   (map (fn [s] [y (+ z s) mid])    (range neg-mid (- size mid)))
-                         right  (map (fn [s] [y (+ z s) neg-mid]) (range neg-mid (- size mid)))]
-                     (distinct (apply concat top bottom left right [])))
-                   (let [top    (map (fn [s] [mid y s])     (range neg-mid (- size mid)))
-                         bottom (map (fn [s] [neg-mid y s]) (range neg-mid (- size mid)))
-                         left   (map (fn [s] [s y mid])    (range neg-mid (- size mid)))
-                         right  (map (fn [s] [s y neg-mid]) (range neg-mid (- size mid)))]
-                     (distinct (apply concat top bottom left right []))))]
+           cords (case orientation
+                   :upright (let [top    (map (fn [s] [y (+ z mid) s])     (range neg-mid (- size mid)))
+                                  bottom (map (fn [s] [y (+ z neg-mid) s]) (range neg-mid (- size mid)))
+                                  left   (map (fn [s] [y (+ z s) mid])    (range neg-mid (- size mid)))
+                                  right  (map (fn [s] [y (+ z s) neg-mid]) (range neg-mid (- size mid)))]
+                              (distinct (apply concat top bottom left right [])))
+                   :flat (let [top    (map (fn [s] [mid y s])     (range neg-mid (- size mid)))
+                               bottom (map (fn [s] [neg-mid y s]) (range neg-mid (- size mid)))
+                               left   (map (fn [s] [s y mid])    (range neg-mid (- size mid)))
+                               right  (map (fn [s] [s y neg-mid]) (range neg-mid (- size mid)))]
+                           (distinct (apply concat top bottom left right []))))]
        (blocks cords thing)
        cords)))
 
-;;(circle 5 5 :gold_block true)
+;;(circle 5 5 :gold_block :upright)
 
 (defn diamond
   [material]
@@ -394,9 +391,7 @@
                    :z (atom 0)
                    :size (atom 10)
                    :dir (atom :forward)
-                   :material (atom :sand)})
-
-(reset! (:material spiral-state) :diamond_block)
+                   :material (atom :diamond_block)})
 
 (defn reset-spiral! []
   (def start-player-loc (.getLocation player))
@@ -457,8 +452,7 @@
    :z (atom 0)
    :size (atom 10)
    :dir (atom :forward)
-   :material (atom :grass)
-   :fix-y (atom 0)})
+   :material (atom :grass)})
 
 (defn reset-triangle! []
   (def start-player-loc  (.getLocation player))
@@ -466,8 +460,7 @@
   (reset! (:z triangle-state) 0)
   (reset! (:y triangle-state) 3)
   (reset! (:size triangle-state) 10)
-  (reset! (:dir triangle-state) :forward)
-  )
+  (reset! (:dir triangle-state) :forward))
 
 (defn triangle-cords [material growth-fn iterations]
   (loop [cords []]
@@ -555,18 +548,12 @@
   )
 
 (defonce growth (atom 0))
-(def instr2 [(b/pen-up)
-             (b/up 5)
-             (b/left 3)
-             (b/forward 1)
-             (b/pen-down)
-             (b/forward (mod @growth 10))])
-(def mat2 [:sand])
 )
-(setup-world)
-
-;;START
-
+;;(setup-world)
+;; \:O
+;;  █\
+;;./ \.
+;;->START<-
 (do
   (def overpad-note (cycle (degrees [1 1 1 1 1 1 1 1
                                      1 1 1 1 3 3 3 3
@@ -583,7 +570,7 @@
 
   ;;(remove-beat-trigger trigger-g62427)
   ;;(remove-all-beat-triggers)
- ;; (kill synth/pad)
+  ;;(kill synth/pad)
  )
 
 (set-time :night)
@@ -620,8 +607,8 @@
                   (reverb-kick-s :amp 1.0 :start start)
                   (reverb-kick-s :amp 1.0 :rate -1)
                   (when-not simple
-                    (circle beat size  -1 :coal_block true)
-                    (circle beat (dec size) -1 :fire true))
+                    (circle beat size  -1 :coal_block :upright)
+                    (circle beat (dec size) -1 :fire :upright))
                   )
 
              (do (paint-line 10 :ice)
@@ -735,8 +722,7 @@
      (let [r (if (= 0.0 (mod b 128)) 0.9 1.0)]
        (ring-hat :amp 0.2 :rate r))
      (circle (inc (mod @growth 20)) (choose [:sand]))
-     ;;(draw (choose mat2) instr2)
-     )))
+)))
 
 (remove-beat-trigger ring-trigger)
 (remove-all-sample-triggers)
@@ -757,18 +743,9 @@
 (remove-all-beat-triggers)
 (remove-all-sample-triggers)
 
-(dotimes [_ 100] (paint-triangle :grass))
-;;:mob_spawner onfire pigs
-(def block-material [:ice :snow_block :quartz_block :dimond_block])
-
-(do (big-reverb-kick-s) (set-time :day))
-
-(set-time :night)
 ;;(destroyer-of-worlds)
-
-(monster 0 10 0 :pig)
 (block-fill 10 0 10 :grass)
-(stop-all)
+
 (def trigger-g62425  (on-beat-trigger 32 #(do
                                             (storm true)
                                             (light-s)
