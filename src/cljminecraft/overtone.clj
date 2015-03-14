@@ -96,6 +96,18 @@
           (range -10 10)))
        (range -10 10))))))
 
+;;TODO: Use chunks, seperate light calculation for a batch.
+;;Block b = event.getBlock();
+;;Chunk c = b.getChunk();
+;;net.minecraft.server.Chunk chunk = ((CraftChunk) c).getHandle();
+;;//get the inner-chunk index of the block to change
+;;int x = b.getX();
+;;int y = b.getY();
+;;int z = b.getZ();
+;;//modify the block in the chunk
+;;int newtypeid = 5;
+;;boolean success = chunk.a(x & 15, y, z & 15, newtypeid);
+
 (defn blocks "relative to player"
   ([actions material] (blocks (map #(if (= 3 (count %1)) (concat %1 [material])) actions)) )
   ([actions]
