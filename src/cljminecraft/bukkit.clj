@@ -52,8 +52,8 @@
   "Execute a given function repeatedly on the UI thread, delay and period in server ticks. If you specify async?, take care not to directly call any Bukkit API and, by extension, and clj-minecraft functions that use the Bukkit API within this function"
   [plugin fn delay period & [async?]]
   (if async?
-    (.runTaskTimerAsynchronously (scheduler) fn (long delay) (long period))
-    (.runTaskTimer (scheduler) fn (long delay) (long period))))
+    (.runTaskTimerAsynchronously (scheduler) plugin fn (long delay) (long period))
+    (.runTaskTimer (scheduler) plugin fn (long delay) (long period))))
 
 (defn cancel-task
   [task-id]
