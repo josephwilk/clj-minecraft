@@ -11,7 +11,7 @@ install:
 
 	@echo "Building Spigot Minecraft server..."
 	cd minecraft && java -jar BuildTools.jar
-	cp minecraft/Bukkit/target/bukkit-1.8-R0.1-SNAPSHOT.jar resources/
+	cp minecraft/Bukkit/target/bukkit-1.8.7-R0.1-SNAPSHOT.jar resources/bukkit-1.8-R0.1-SNAPSHOT.jar
 
 	@echo "Compling clj-minecraft..."
 	lein uberjar
